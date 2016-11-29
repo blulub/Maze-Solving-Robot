@@ -98,7 +98,9 @@ int run_Astar(Priority_Queue pq) {
 }
 
 void visit(Priority_Queue pq, Block b) {
-	
+	b.visited = 1;
+
+	// check neighbors, update distances, add to priority queue, update previouses
 }
 
 int get_index(Block b) {
