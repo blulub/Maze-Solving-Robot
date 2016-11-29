@@ -27,6 +27,7 @@ typedef struct {
 } Priority_Queue;
 
 Coordinate dest;
+Block dest_block;
 Coordinate origin;
 Priority_Queue pq;
 Coordinate current;
@@ -42,11 +43,12 @@ int is_empty(Priority_Queue pq);
 void sink(Priority_Queue pq, int ind);
 void swim(Priority_Queue pq, int ind);
 void swap(Block blocks[], int index_one, int index_two);
-double get_distance(Coordinate origin, Coordinate dest);
-void run_Astar(Priority_Queue pq);
+double calculate_distance(Coordinate origin, Coordinate dest);
+int run_Astar(Priority_Queue pq);
 void visit(Priority_Queue pq, Block b);
 int equals(Block b, Block d);
 int get_index(Block b);
+double get_distance(Block b);
 
 // TODO: Implement all functions below
 
@@ -57,9 +59,10 @@ void move(Block dest); /* Moves robot to dest block from current block */
 // END TODO
 
 void setup() {
-	memset(&distances, -1, MAX_NUM_BLOCKS);
+	memset(&distances, 1000, MAX_NUM_BLOCKS);
 
 	dest = {.row = 0, .col = 0}; // reset this before solving maze
+	dest_block = {dest, 0, NULL, 0};
 	origin = {.row = 0, .col = 0}; // origin is always 0, 0
 	current = {.row = 0, .col = 0};
 	pq = {}; // initialize empty priority queue
@@ -70,21 +73,38 @@ void loop() {
 
 }
 
-void run_Astar(Priority_Queue pq) {
-	Block start_block = {origin, 0, NULL, get_distance(origin, dest)};
+int run_Astar(Priority_Queue pq) {
+	Block start_block = {origin, 0, NULL, calculate_distance(origin, dest)};
 	pq.pq_add(start_block);
+	distances[get_index(start_block)] = 0;
 
 	// while pq not empty, go to most optimal
 	while (!is_empty(pq)) {
+		Block best_block = pop_highest_priority(pq);
+		if (best_block.visited) {
+			continue;
+		}
 
+		// move robot to best_block;
+
+		if (equals(best_block, dest_block)) {
+			return 1;
+		} else {
+			visit(pq, best_block);
+		}
 	}
+
+	return 0;
+}
+
+void visit(Priority_Queue pq, Block b) {
+	
 }
 
 int get_index(Block b) {
 	int row = b.coord.row;
 	int col = b.coord.col;
-
-	
+	return col + (row * 16);
 }
 
 int equals(Block b, Block d) {
@@ -95,7 +115,11 @@ double square(double num) {
 	return num * num;
 }
 
-double get_distance(Coordinate origin, Coordinate dest) {
+double get_distance(Block b) {
+	return distances[get_index(b)];
+}
+
+double calculate_distance(Coordinate origin, Coordinate dest) {
 	double origin_y = (double) origin.row;
 	double origin_x = (double) origin.col;
 	double dest_y = (double) dest.row;
@@ -144,13 +168,17 @@ void sink(Priority_Queue pq, int index) {
 
 	// while we still have children in pq
 	while (LEFT_CHILD_INDEX(curr_index) < pq.size) {
+		Block curr_block = pq.data[curr_index];
 		int smaller_index = LEFT_CHILD_INDEX(curr_index);
 		int right_idx = (RIGHT_CHILD_INDEX(curr_index) < pq.size) ? RIGHT_CHILD_INDEX(curr_index) : -1;
-		if (right_idx > -1 && (pq.data[right_idx].dist < pq.data[smaller_index].dist) {
-			smaller_index = right_idx;
+		Block smaller_block = pq.data[smaller_index];
+		Block right_block = (right_idx < pq.size) ? pq.data[right_idx] : NULL;
+
+		if (right_block != NULL && get_distance(right_block) < get_distance(smaller_block)) {
+			smaller_block = right_block;
 		}
 
-		if (pq.data[smaller_index].dist < pq.data[curr_index].size) {
+		if (get_distance(smaller_block) < get_distance(curr_block)) {
 			swap(pq, smaller_index, curr_index);
 			curr_index = smaller_index;
 		} else {
@@ -165,8 +193,10 @@ void swim(Priority_Queue pq, int index) {
 	int curr_index = index;
 
 	while (curr_index > 0) {
+		Block curr_block = pq.data[curr_index];
 		int parent_idx = PARENT_INDEX(curr_index);
-		if (pq.data[parent_idx].dist < pq.data[curr_index].dist) {
+		Block parent_block = (parent_idx >= 0) ? pq.data[parent_idx] : NULL;
+		if (get_distance(parent_block) > get_distance(curr_block)) {
 			swap(pq, parent_idx, curr_index);
 			curr_index = parent_idx;
 		} else {
