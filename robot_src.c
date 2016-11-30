@@ -6,7 +6,13 @@
 #define LEFT_CHILD_INDEX(x) ((2 * x))
 #define RIGHT_CHILD_INDEX(x) ((2 * x + 1))
 #define PARENT_INDEX(x) ((x / 2))
-#define SQUARE(x) ((x * x));
+#define SQUARE(x) ((x * x))
+#define LEFT 0
+#define RIGHT 1
+#define TOP 2
+#define BOTTOM 3
+#define LENGTH 16
+#define WIDTH 16
 
 typedef struct {
 	int row;
@@ -22,7 +28,6 @@ typedef struct {
 
 typedef struct {
 	Block data[MAX_NUM_BLOCKS];
-	Block* tail;
 	int size;
 } Priority_Queue;
 
@@ -31,6 +36,7 @@ Block dest_block;
 Coordinate origin;
 Priority_Queue pq;
 Coordinate current;
+Block grid[LENGTH][WIDTH];
 
 // map of block ids to distances
 double distances[MAX_NUM_BLOCKS];
@@ -49,6 +55,7 @@ void visit(Priority_Queue pq, Block b);
 int equals(Block b, Block d);
 int get_index(Block b);
 double get_distance(Block b);
+int is_inbounds(Coordinate coord);
 
 // TODO: Implement all functions below
 
@@ -66,6 +73,19 @@ void setup() {
 	origin = {.row = 0, .col = 0}; // origin is always 0, 0
 	current = {.row = 0, .col = 0};
 	pq = {}; // initialize empty priority queue
+	for (int row = 0; row < LENGTH; row++) {
+		for (int col = 0; col < WIDTH; col++) {
+			if (row == dest.row && col == dest.col) {
+				grid[row][col] = dest_block;
+			} else if (row == 0 && col == 0) {
+				Block start_block = {origin, 0, NULL, 0};
+				grid[row][col] = start_block;
+			} else {
+				Coordinate coord = {row, col};
+				Block new_block = {coord, 0, NULL, -1};
+			}
+		}
+	}
 }
 
 void loop() {
@@ -74,9 +94,11 @@ void loop() {
 }
 
 int run_Astar(Priority_Queue pq) {
-	Block start_block = {origin, 0, NULL, calculate_distance(origin, dest)};
+	Block start_block = grid[0][0];
 	pq.pq_add(start_block);
-	distances[get_index(start_block)] = 0;
+
+	// distance to start is 0 + heuristic
+	distances[get_index(start_block)] = 0 + calculate_distance(start_block.coord, dest);
 
 	// while pq not empty, go to most optimal
 	while (!is_empty(pq)) {
@@ -86,6 +108,7 @@ int run_Astar(Priority_Queue pq) {
 		}
 
 		// move robot to best_block;
+
 
 		if (equals(best_block, dest_block)) {
 			return 1;
@@ -99,8 +122,42 @@ int run_Astar(Priority_Queue pq) {
 
 void visit(Priority_Queue pq, Block b) {
 	b.visited = 1;
+	int curr_row = b.coord.row;
+	int curr_col = b.coord.col;
 
-	// check neighbors, update distances, add to priority queue, update previouses
+	// for every neighbor, check if we have a shorter distance
+	for (int row_offset = -1; row_offset <= 1; row_offset++) {
+		for (int col_offset = -1; col_offset <= 1; col_offset++) {
+
+			Coordinate new_coord = {curr_row + row_offset, curr_col + col_offset};
+			// only check four directions, top, bot, left, right, make sure in bounds
+			if (row_offset ^ col_offset && is_inbounds(new_coord)) {
+
+				// get the neighbor from the grid, make sure it's reachable and hasn't been seen
+				Block neighbor = grid[curr_row + row_offset][curr_col + col_offset];
+				if (is_reachable(neighbor) && !neighbor.visited) {
+
+					// update distances of neighbor
+					double oldDist = distances[get_index(neighbor)];
+					double newDist = b.dist + 1 + calculate_distance(neighbor.coord, dest);
+					// add to queue
+					if (newDist < oldDist) {
+						neighbor.prev = &b;
+						distances[get_index(neighbor)] = newDist;
+						pq_add(pq, neighbor);
+					}
+				}
+			}
+		}
+	}
+}
+
+int is_inbounds(Coordinate coord) {
+	if (coord.row >= 0 && coord.row < LENGTH && coord.col >= 0 && coor.col < WIDTH) {
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 int get_index(Block b) {
