@@ -61,7 +61,7 @@ int is_inbounds(Coordinate coord);
 
 /* Returns if the dest block is reachable given the current block */
 int is_reachable(Block dest);
-void move(Block dest); /* Moves robot to dest block from current block */
+void move_robot(Block current, Block dest); /* Moves robot to dest block from current block */
 
 // END TODO
 
@@ -108,7 +108,7 @@ int run_Astar(Priority_Queue pq) {
 		}
 
 		// move robot to best_block;
-
+		move_robot(curr_block, best_block);
 
 		if (equals(best_block, dest_block)) {
 			return 1;
@@ -150,6 +150,13 @@ void visit(Priority_Queue pq, Block b) {
 			}
 		}
 	}
+}
+
+void move_robot(Block curr, Block dest) {
+	if (equals(curr, dest)) return;
+	// use previous fields to find a path from curr to dest
+
+	// move robot using discrete movements
 }
 
 int is_inbounds(Coordinate coord) {
