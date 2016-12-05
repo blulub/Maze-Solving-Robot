@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <math.h>
 
 #define MAX_NUM_BLOCKS 256
@@ -47,8 +48,8 @@ Block grid[LENGTH][WIDTH];
 double distances[MAX_NUM_BLOCKS];
 
 
-Block peek_highest_priority(Priority_Queue pq);
-Block pop_highest_priority(Priority_Queue pq);
+Block* peek_highest_priority(Priority_Queue pq);
+Block* pop_highest_priority(Priority_Queue pq);
 void pq_add(Priority_Queue pq, Block b);
 int is_empty(Priority_Queue pq);
 void sink(Priority_Queue pq, int ind);
@@ -108,19 +109,20 @@ int run_Astar(Priority_Queue pq) {
 
   // while pq not empty, go to most optimal
   while (!is_empty(pq)) {
-    Block best_block = pop_highest_priority(pq);
-    if (best_block.visited) {
+    Block* best_block = pop_highest_priority(pq);
+    assert(best_block != NULL);
+    if (best_block->visited) {
       continue;
     }
 
     // move robot to best_block;
-    move_robot(curr_block, best_block);
-    curr_block = best_block;
+    move_robot(curr_block, *best_block);
+    curr_block = *best_block;
 
-    if (equals(best_block, dest_block)) {
+    if (equals(*best_block, dest_block)) {
       return 1;
     } else {
-      visit(pq, best_block);
+      visit(pq, *best_block);
     }
   }
 
@@ -204,22 +206,23 @@ int is_empty(Priority_Queue pq) {
   return !pq.size;
 }
 
-Block peek_highest_priority(Priority_Queue pq) {
+Block* peek_highest_priority(Priority_Queue pq) {
   if (pq.size == 0) {
     return NULL;
   } else {
-    return pq.data[0];
+    Block to_return = pq.data[0];
+    return &to_return;
   }
 }
 
-Block pop_highest_priority(Priority_Queue pq) {
+Block* pop_highest_priority(Priority_Queue pq) {
   if (pq.size == 0) {
     return NULL;
   } else {
     Block to_return = pq.data[0];
     pq.data[0] = pq.data[pq.size - 1];
     sink(pq, 0);
-    return to_return;
+    return &to_return;
   }
 }
 
@@ -245,10 +248,14 @@ void sink(Priority_Queue pq, int index) {
     int smaller_index = LEFT_CHILD_INDEX(curr_index);
     int right_idx = (RIGHT_CHILD_INDEX(curr_index) < pq.size) ? RIGHT_CHILD_INDEX(curr_index) : -1;
     Block smaller_block = pq.data[smaller_index];
-    Block right_block = (right_idx < pq.size) ? pq.data[right_idx] : NULL;
+    Block* right_block = NULL;
+    if (right_idx < pq.size) {
+      Block to_set = pq.data[right_idx];
+      right_block = &to_set;
+    }
 
-    if (right_block != NULL && get_distance(right_block) < get_distance(smaller_block)) {
-      smaller_block = right_block;
+    if (right_block != NULL && get_distance(*right_block) < get_distance(smaller_block)) {
+      smaller_block = *right_block;
     }
 
     if (get_distance(smaller_block) < get_distance(curr_block)) {
@@ -268,8 +275,15 @@ void swim(Priority_Queue pq, int index) {
   while (curr_index > 0) {
     Block curr_block = pq.data[curr_index];
     int parent_idx = PARENT_INDEX(curr_index);
-    Block parent_block = (parent_idx >= 0) ? pq.data[parent_idx] : NULL;
-    if (get_distance(parent_block) > get_distance(curr_block)) {
+    Block* parent_block = NULL;
+    if (parent_idx >= 0) {
+      Block to_set = pq.data[parent_idx];
+      parent_block = &to_set;
+    }
+
+    assert(parent_block);
+    
+    if (get_distance(*parent_block) > get_distance(curr_block)) {
       swap(pq, parent_idx, curr_index);
       curr_index = parent_idx;
     } else {
