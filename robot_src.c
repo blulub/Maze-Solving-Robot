@@ -24,11 +24,10 @@ struct Block {
   struct Coordinate coord;
   int visited;
   struct Block* prev;
-  double dist;
 };
 
 struct Priority_Queue {
-  struct Block data[MAX_NUM_BLOCKS];
+  struct Block* data[MAX_NUM_BLOCKS];
   int size;
 };
 
@@ -75,7 +74,7 @@ void setup() {
   memset(&distances, 1000, MAX_NUM_BLOCKS);
 
   dest = {.row = 0, .col = 0}; // reset this before solving maze
-  dest_block = {dest, 0, NULL, 0};
+  dest_block = {dest, 0, NULL};
   origin = {.row = 0, .col = 0}; // origin is always 0, 0
   current = {.row = 0, .col = 0};
   pq = {}; // initialize empty priority queue
@@ -84,11 +83,11 @@ void setup() {
       if (row == dest.row && col == dest.col) {
         grid[row][col] = dest_block;
       } else if (row == 0 && col == 0) {
-        Block start_block = {origin, 0, NULL, 0};
+        Block start_block = {origin, 0, NULL};
         grid[row][col] = start_block;
       } else {
         Coordinate coord = {row, col};
-        Block new_block = {coord, 0, NULL, -1};
+        Block new_block = {coord, 0, NULL};
       }
     }
   }
@@ -148,7 +147,7 @@ void visit(Priority_Queue pq, Block b) {
 
           // update distances of neighbor
           double oldDist = distances[get_index(neighbor)];
-          double newDist = b.dist + 1 + calculate_distance(neighbor.coord, dest);
+          double newDist = distances[get_index(b)] + 1 + calculate_distance(neighbor.coord, dest);
           // add to queue
           if (newDist < oldDist) {
             neighbor.prev = &b;
@@ -210,8 +209,7 @@ Block* peek_highest_priority(Priority_Queue pq) {
   if (pq.size == 0) {
     return NULL;
   } else {
-    Block to_return = pq.data[0];
-    return &to_return;
+    return pq.data[0];
   }
 }
 
@@ -219,22 +217,22 @@ Block* pop_highest_priority(Priority_Queue pq) {
   if (pq.size == 0) {
     return NULL;
   } else {
-    Block to_return = pq.data[0];
+    Block* to_return = pq.data[0];
     pq.data[0] = pq.data[pq.size - 1];
     sink(pq, 0);
-    return &to_return;
+    return to_return;
   }
 }
 
 void pq_add(Priority_Queue pq, Block b) {
   if (pq.size >= MAX_NUM_BLOCKS) return;
-  pq.data[pq.size] = b;
+  pq.data[pq.size] = &b;
   swim(pq, pq.size);
   pq.size++;
 }
 
 void swap(Priority_Queue pq, int index_one, int index_two) {
-  Block temp = pq.data[index_one];
+  Block* temp = pq.data[index_one];
   pq.data[index_one] = pq.data[index_two];
   pq.data[index_two] = temp;
 }
@@ -244,21 +242,20 @@ void sink(Priority_Queue pq, int index) {
 
   // while we still have children in pq
   while (LEFT_CHILD_INDEX(curr_index) < pq.size) {
-    Block curr_block = pq.data[curr_index];
+    Block* curr_block = pq.data[curr_index];
     int smaller_index = LEFT_CHILD_INDEX(curr_index);
     int right_idx = (RIGHT_CHILD_INDEX(curr_index) < pq.size) ? RIGHT_CHILD_INDEX(curr_index) : -1;
-    Block smaller_block = pq.data[smaller_index];
+    Block* smaller_block = pq.data[smaller_index];
     Block* right_block = NULL;
     if (right_idx < pq.size) {
-      Block to_set = pq.data[right_idx];
-      right_block = &to_set;
+      right_block = pq.data[right_idx];
     }
 
-    if (right_block != NULL && get_distance(*right_block) < get_distance(smaller_block)) {
+    if (right_block != NULL && get_distance(*right_block) < get_distance(*smaller_block)) {
       smaller_block = *right_block;
     }
 
-    if (get_distance(smaller_block) < get_distance(curr_block)) {
+    if (get_distance(*smaller_block) < get_distance(*curr_block)) {
       swap(pq, smaller_index, curr_index);
       curr_index = smaller_index;
     } else {
@@ -273,17 +270,16 @@ void swim(Priority_Queue pq, int index) {
   int curr_index = index;
 
   while (curr_index > 0) {
-    Block curr_block = pq.data[curr_index];
+    Block* curr_block = pq.data[curr_index];
     int parent_idx = PARENT_INDEX(curr_index);
     Block* parent_block = NULL;
     if (parent_idx >= 0) {
-      Block to_set = pq.data[parent_idx];
-      parent_block = &to_set;
+      parent_block = pq.data[parent_idx];
     }
 
     assert(parent_block);
     
-    if (get_distance(*parent_block) > get_distance(curr_block)) {
+    if (get_distance(*parent_block) > get_distance(*curr_block)) {
       swap(pq, parent_idx, curr_index);
       curr_index = parent_idx;
     } else {
