@@ -16,8 +16,8 @@
 #define WIDTH 16
 
 struct Coordinate {
-  short row;
-  short col;
+  byte row;
+  byte col;
 };
 
 struct Block {
@@ -28,7 +28,7 @@ struct Block {
 
 struct Priority_Queue {
   struct Block* data[MAX_NUM_BLOCKS];
-  short size;
+  byte size;
 };
 
 typedef struct Coordinate Coordinate;
@@ -41,6 +41,7 @@ Block curr_block;
 Coordinate origin;
 Priority_Queue pq;
 Coordinate current;
+
 Block grid[LENGTH][WIDTH];
 
 // map of block ids to distances
@@ -51,14 +52,14 @@ Block* peek_highest_priority(Priority_Queue pq);
 Block* pop_highest_priority(Priority_Queue pq);
 void pq_add(Priority_Queue pq, Block b);
 bool is_empty(Priority_Queue pq);
-void sink(Priority_Queue pq, int ind);
-void swim(Priority_Queue pq, int ind);
-void swap(Block blocks[], int index_one, int index_two);
+void sink(Priority_Queue pq, byte ind);
+void swim(Priority_Queue pq, byte ind);
+void swap(Block blocks[], byte index_one, byte index_two);
 double calculate_distance(Coordinate origin, Coordinate dest);
 int run_Astar(Priority_Queue pq);
 void visit(Priority_Queue pq, Block b);
 bool equals(Block b, Block d);
-short get_index(Block b);
+byte get_index(Block b);
 double get_distance(Block b);
 bool is_inbounds(Coordinate coord);
 
@@ -171,7 +172,7 @@ bool is_inbounds(Coordinate coord) {
   return (coord.row >= 0 && coord.row < LENGTH && coord.col >= 0 && coord.col < WIDTH);
 }
 
-short get_index(Block b) {
+byte get_index(Block b) {
   short row = b.coord.row;
   short col = b.coord.col;
   return col + (row * 16);
@@ -233,14 +234,14 @@ void swap(Priority_Queue pq, short index_one, short index_two) {
   pq.data[index_two] = temp;
 }
 
-void sink(Priority_Queue pq, short index) {
-  short curr_index = index;
+void sink(Priority_Queue pq, byte index) {
+  byte curr_index = index;
 
   // while we still have children in pq
   while (LEFT_CHILD_INDEX(curr_index) < pq.size) {
     Block* curr_block = pq.data[curr_index];
-    short smaller_index = LEFT_CHILD_INDEX(curr_index);
-    short right_idx = (RIGHT_CHILD_INDEX(curr_index) < pq.size) ? RIGHT_CHILD_INDEX(curr_index) : -1;
+    byte smaller_index = LEFT_CHILD_INDEX(curr_index);
+    byte right_idx = (RIGHT_CHILD_INDEX(curr_index) < pq.size) ? RIGHT_CHILD_INDEX(curr_index) : -1;
     Block* smaller_block = pq.data[smaller_index];
     Block* right_block = NULL;
     if (right_idx < pq.size) {
@@ -262,12 +263,12 @@ void sink(Priority_Queue pq, short index) {
   return;
 }
 
-void swim(Priority_Queue pq, short index) {
-  short curr_index = index;
+void swim(Priority_Queue pq, byte index) {
+  byte curr_index = index;
 
   while (curr_index > 0) {
     Block* curr_block = pq.data[curr_index];
-    short parent_idx = PARENT_INDEX(curr_index);
+    byte parent_idx = PARENT_INDEX(curr_index);
     Block* parent_block = NULL;
     if (parent_idx >= 0) {
       parent_block = pq.data[parent_idx];
