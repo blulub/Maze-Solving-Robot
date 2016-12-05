@@ -42,7 +42,7 @@ Coordinate origin;
 Priority_Queue pq;
 Coordinate current;
 
-Block grid[LENGTH][WIDTH];
+Block* grid[LENGTH][WIDTH];
 
 // map of block ids to distances
 double distances[MAX_NUM_BLOCKS];
@@ -82,13 +82,14 @@ void setup() {
   for (int row = 0; row < LENGTH; row++) {
     for (int col = 0; col < WIDTH; col++) {
       if (row == dest.row && col == dest.col) {
-        grid[row][col] = dest_block;
+        grid[row][col] = &dest_block;
       } else if (row == 0 && col == 0) {
         Block start_block = {origin, 0, NULL};
-        grid[row][col] = start_block;
+        grid[row][col] = &start_block;
       } else {
         Coordinate coord = {row, col};
         Block new_block = {coord, 0, NULL};
+        grid[row][col] = &new_block;
       }
     }
   }
@@ -100,7 +101,7 @@ void loop() {
 }
 
 int run_Astar(Priority_Queue pq) {
-  Block start_block = grid[0][0];
+  Block start_block = *grid[0][0];
   curr_block = start_block;
   pq_add(pq, start_block);
 
@@ -143,7 +144,7 @@ void visit(Priority_Queue pq, Block b) {
       if (row_offset ^ col_offset && is_inbounds(new_coord)) {
 
         // get the neighbor from the grid, make sure it's reachable and hasn't been seen
-        Block neighbor = grid[curr_row + row_offset][curr_col + col_offset];
+        Block neighbor = *grid[curr_row + row_offset][curr_col + col_offset];
         if (is_reachable(neighbor) && !neighbor.visited) {
 
           // update distances of neighbor
