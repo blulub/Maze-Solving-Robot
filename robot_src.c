@@ -132,8 +132,8 @@ int run_Astar(Priority_Queue pq) {
 
 void visit(Priority_Queue pq, Block b) {
   b.visited = true;
-  short curr_row = b.coord.row;
-  short curr_col = b.coord.col;
+  byte curr_row = b.coord.row;
+  byte curr_col = b.coord.col;
 
   // for every neighbor, check if we have a shorter distance
   for (int row_offset = -1; row_offset <= 1; row_offset++) {
