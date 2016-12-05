@@ -16,19 +16,19 @@
 #define WIDTH 16
 
 struct Coordinate {
-  int row;
-  int col;
+  short row;
+  short col;
 };
 
 struct Block {
   struct Coordinate coord;
-  int visited;
+  bool visited;
   struct Block* prev;
 };
 
 struct Priority_Queue {
   struct Block* data[MAX_NUM_BLOCKS];
-  int size;
+  short size;
 };
 
 typedef struct Coordinate Coordinate;
@@ -50,22 +50,22 @@ double distances[MAX_NUM_BLOCKS];
 Block* peek_highest_priority(Priority_Queue pq);
 Block* pop_highest_priority(Priority_Queue pq);
 void pq_add(Priority_Queue pq, Block b);
-int is_empty(Priority_Queue pq);
+bool is_empty(Priority_Queue pq);
 void sink(Priority_Queue pq, int ind);
 void swim(Priority_Queue pq, int ind);
 void swap(Block blocks[], int index_one, int index_two);
 double calculate_distance(Coordinate origin, Coordinate dest);
 int run_Astar(Priority_Queue pq);
 void visit(Priority_Queue pq, Block b);
-int equals(Block b, Block d);
-int get_index(Block b);
+bool equals(Block b, Block d);
+short get_index(Block b);
 double get_distance(Block b);
-int is_inbounds(Coordinate coord);
+bool is_inbounds(Coordinate coord);
 
 // TODO: Implement all functions below
 
 /* Returns if the dest block is reachable given the current block */
-int is_reachable(Block dest);
+bool is_reachable(Block dest);
 void move_robot(Block current, Block dest); /* Moves robot to dest block from current block */
 
 // END TODO
@@ -129,9 +129,9 @@ int run_Astar(Priority_Queue pq) {
 }
 
 void visit(Priority_Queue pq, Block b) {
-  b.visited = 1;
-  int curr_row = b.coord.row;
-  int curr_col = b.coord.col;
+  b.visited = true;
+  short curr_row = b.coord.row;
+  short curr_col = b.coord.col;
 
   // for every neighbor, check if we have a shorter distance
   for (int row_offset = -1; row_offset <= 1; row_offset++) {
@@ -167,21 +167,17 @@ void move_robot(Block curr, Block dest) {
   // move robot using discrete movements
 }
 
-int is_inbounds(Coordinate coord) {
-  if (coord.row >= 0 && coord.row < LENGTH && coord.col >= 0 && coord.col < WIDTH) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool is_inbounds(Coordinate coord) {
+  return (coord.row >= 0 && coord.row < LENGTH && coord.col >= 0 && coord.col < WIDTH);
 }
 
-int get_index(Block b) {
-  int row = b.coord.row;
-  int col = b.coord.col;
+short get_index(Block b) {
+  short row = b.coord.row;
+  short col = b.coord.col;
   return col + (row * 16);
 }
 
-int equals(Block b, Block d) {
+bool equals(Block b, Block d) {
   return b.coord.row == d.coord.row && b.coord.col == d.coord.col;
 }
 
@@ -201,7 +197,7 @@ double calculate_distance(Coordinate origin, Coordinate dest) {
   return sqrt(SQUARE(origin_y - dest_y) + SQUARE(origin_x - dest_x));
 }
 
-int is_empty(Priority_Queue pq) {
+bool is_empty(Priority_Queue pq) {
   return !pq.size;
 }
 
@@ -231,20 +227,20 @@ void pq_add(Priority_Queue pq, Block b) {
   pq.size++;
 }
 
-void swap(Priority_Queue pq, int index_one, int index_two) {
+void swap(Priority_Queue pq, short index_one, short index_two) {
   Block* temp = pq.data[index_one];
   pq.data[index_one] = pq.data[index_two];
   pq.data[index_two] = temp;
 }
 
-void sink(Priority_Queue pq, int index) {
-  int curr_index = index;
+void sink(Priority_Queue pq, short index) {
+  short curr_index = index;
 
   // while we still have children in pq
   while (LEFT_CHILD_INDEX(curr_index) < pq.size) {
     Block* curr_block = pq.data[curr_index];
-    int smaller_index = LEFT_CHILD_INDEX(curr_index);
-    int right_idx = (RIGHT_CHILD_INDEX(curr_index) < pq.size) ? RIGHT_CHILD_INDEX(curr_index) : -1;
+    short smaller_index = LEFT_CHILD_INDEX(curr_index);
+    short right_idx = (RIGHT_CHILD_INDEX(curr_index) < pq.size) ? RIGHT_CHILD_INDEX(curr_index) : -1;
     Block* smaller_block = pq.data[smaller_index];
     Block* right_block = NULL;
     if (right_idx < pq.size) {
@@ -252,7 +248,7 @@ void sink(Priority_Queue pq, int index) {
     }
 
     if (right_block != NULL && get_distance(*right_block) < get_distance(*smaller_block)) {
-      smaller_block = *right_block;
+      smaller_block = right_block;
     }
 
     if (get_distance(*smaller_block) < get_distance(*curr_block)) {
@@ -266,12 +262,12 @@ void sink(Priority_Queue pq, int index) {
   return;
 }
 
-void swim(Priority_Queue pq, int index) {
-  int curr_index = index;
+void swim(Priority_Queue pq, short index) {
+  short curr_index = index;
 
   while (curr_index > 0) {
     Block* curr_block = pq.data[curr_index];
-    int parent_idx = PARENT_INDEX(curr_index);
+    short parent_idx = PARENT_INDEX(curr_index);
     Block* parent_block = NULL;
     if (parent_idx >= 0) {
       parent_block = pq.data[parent_idx];
