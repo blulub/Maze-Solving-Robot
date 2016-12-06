@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <math.h>
 
-#define MAX_NUM_BLOCKS 256
+#define MAX_NUM_BLOCKS 64
 #define LEFT_CHILD_INDEX(x) ((2 * x))
 #define RIGHT_CHILD_INDEX(x) ((2 * x + 1))
 #define PARENT_INDEX(x) ((x / 2))
@@ -12,8 +12,8 @@
 #define RIGHT 1
 #define TOP 2
 #define BOTTOM 3
-#define LENGTH 16
-#define WIDTH 16
+#define LENGTH 8
+#define WIDTH 8
 
 struct Coordinate {
   byte row;
