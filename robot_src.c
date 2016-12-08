@@ -162,6 +162,7 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  Serial.println("print this shit");
   if (run_once) {
     run_once = false;
     run_Astar(pq);
@@ -169,8 +170,10 @@ void loop() {
 }
 
 int run_Astar(Priority_Queue priorityQueue) {
-  Serial.println("fucking Astar");
   Block start_block = *grid[0][0];
+
+  Serial.println(start_block.coord.row);
+  Serial.println(start_block.coord.col);
   curr_block = start_block;
   pq_add(priorityQueue, start_block);
 
