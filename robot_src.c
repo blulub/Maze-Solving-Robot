@@ -2,12 +2,10 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <math.h>
+#include <QueueList.h>
+#include <StackList.h>
 
 #define MAX_NUM_BLOCKS 64
-#define LEFT_CHILD_INDEX(x) ((2 * x))
-#define RIGHT_CHILD_INDEX(x) ((2 * x + 1))
-#define PARENT_INDEX(x) ((x / 2))
-#define SQUARE(x) ((x * x))
 #define LEFT 0
 #define RIGHT 1
 #define TOP 2
@@ -43,56 +41,40 @@ double distance[3] = {0};
 
 
 struct Coordinate {
-  byte row;
-  byte col;
+  int row;
+  int col;
 };
 
 struct Block {
   struct Coordinate coord;
   bool visited;
   struct Block* prev;
-};
-
-struct Priority_Queue {
-  struct Block* data[MAX_NUM_BLOCKS];
-  byte size;
+  int distance;
 };
 
 typedef struct Coordinate Coordinate;
 typedef struct Block Block;
-typedef struct Priority_Queue Priority_Queue;
 
-Coordinate dest;
 Block dest_block;
 Block curr_block;
-Coordinate origin;
-Priority_Queue pq;
-Coordinate current;
 int direction;
+int curr_distance;
 bool run_once = true;
+Block grid[LENGTH][WIDTH];
+StackList<Block> stack;
 
-Block* grid[LENGTH][WIDTH];
-
-// list to backtrack
-Block* list[64];
-int list_length;
-
-// map of block ids to distances
-double distances[MAX_NUM_BLOCKS];
+Block* curr_previous[64];
+int curr_previous_length = 0;
+Block* dest_previous[64];
+int dest_previous_length = 0;
+Block* path[64];
+int path_length = 0;
 
 
-Block* peek_highest_priority(Priority_Queue pq);
-Block* pop_highest_priority(Priority_Queue pq);
-void pq_add(Priority_Queue pq, Block b);
-bool is_empty(Priority_Queue pq);
-void sink(Priority_Queue pq, byte ind);
-void swim(Priority_Queue pq, byte ind);
-void swap(Block blocks[], byte index_one, byte index_two);
 double calculate_distance(Coordinate origin, Coordinate dest);
-int run_Astar(Priority_Queue pq);
-void visit(Priority_Queue pq, Block b);
+int run_Astar(Block* pq[]);
+void visit(Block* pq[], Block b);
 bool equals(Block b, Block d);
-byte get_index(Block b);
 double get_distance(Block b);
 bool is_inbounds(Coordinate coord);
 int get_direction(Block b); // gets the direction of block b with respect to current
@@ -100,12 +82,6 @@ void find_path(Block* path[], Block dest);
 void move_to_neighbor_block(Block dest);
 int negate_direction(int dir);
 int change_direction(int dir, int neg);
-
-// list functions
-void reset_list();
-void list_add(Block* b);
-int find_in_list(Block* b);
-
 
 /* Returns if the dest block is reachable given the current block */
 bool is_reachable(Block dest);
@@ -132,28 +108,24 @@ void setup() {
   pinMode(STEP_PIN_RIGHT, OUTPUT);
   // end Neil's setup
 
-  direction = BOTTOM;
-  memset(&distances, 1000, MAX_NUM_BLOCKS);
-
   // setting list to all NULLS
-  for (int i = 0; i < 64; i++) list[i] = NULL;
-  list_length = 0;
+  reset_list(curr_previous, curr_previous_length);
+  reset_list(dest_previous, dest_previous_length);
+  reset_list(path, path_length);
 
-  dest = {.row = 0, .col = 0}; // reset this before solving maze
-  dest_block = {dest, 0, NULL};
-  origin = {.row = 0, .col = 0}; // origin is always 0, 0
-  current = {.row = 0, .col = 0};
-  pq = {}; // initialize empty priority queue
+  dest_block = {{2, 2}, false, -1, NULL};
+  curr_block = {{0, 0}, false, 0, NULL};
+
+  // create blocks to fill in grid
   for (int row = 0; row < LENGTH; row++) {
     for (int col = 0; col < WIDTH; col++) {
       if (row == dest.row && col == dest.col) {
         grid[row][col] = &dest_block;
       } else if (row == 0 && col == 0) {
-        Block start_block = {origin, 0, NULL};
-        grid[row][col] = &start_block;
+        grid[row][col] = &curr_block;
       } else {
         Coordinate coord = {row, col};
-        Block new_block = {coord, 0, NULL};
+        Block new_block = {coord, false, -1, NULL};
         grid[row][col] = &new_block;
       }
     }
@@ -162,56 +134,45 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  Serial.println("print this shit");
   if (run_once) {
     run_once = false;
     run_Astar(pq);
   }
 }
 
-int run_Astar(Priority_Queue priorityQueue) {
-  Block start_block = *grid[0][0];
-
-  Serial.println(start_block.coord.row);
-  Serial.println(start_block.coord.col);
-  curr_block = start_block;
-  pq_add(priorityQueue, start_block);
-
-  Serial.println("starting block coordinates: ");
-  Serial.println(curr_block.coord.row);
-  Serial.println(curr_block.coord.col);
-  Serial.println("size of pq:");
-  Serial.println(priorityQueue.size);
-
-  // distance to start is 0 + heuristic
-  distances[get_index(start_block)] = 0 + calculate_distance(start_block.coord, dest);
-
+int run_Astar(Block* priorityQueue[]) {
+  stack.push(curr_block);
+  
   // while priorityQueue not empty, go to most optimal
-  while (!is_empty(priorityQueue)) {
-    Block* best_block = pop_highest_priority(priorityQueue);
-    assert(best_block != NULL);
-    if (best_block->visited) {
+  while (!stack.isEmpty()) {
+    Block best_block = stack.pop();
+
+    if (best_block.visited) {
       continue;
     }
 
     // move robot to best_block;
-    move_robot(curr_block, *best_block);
-    curr_block = *best_block;
+    move_robot(curr_block, best_block);
+    curr_block = best_block;
 
-    if (equals(*best_block, dest_block)) {
+    // wait for robot to move to best_block?
+    delay(3000);
+
+    if (equals(best_block, dest_block)) {
       return 1;
     } else {
-      visit(priorityQueue, *best_block);
+      visit(best_block);
     }
   }
 
   return 0;
 }
 
-void visit(Priority_Queue priorityQueue, Block b) {
+void visit(Block b) {
   b.visited = true;
   byte curr_row = b.coord.row;
   byte curr_col = b.coord.col;
+  distance = b.distance + 1;
 
   // for every neighbor, check if we have a shorter distance
   for (int row_offset = -1; row_offset <= 1; row_offset++) {
@@ -222,18 +183,12 @@ void visit(Priority_Queue priorityQueue, Block b) {
       if (row_offset ^ col_offset && is_inbounds(new_coord)) {
 
         // get the neighbor from the grid, make sure it's reachable and hasn't been seen
-        Block neighbor = *grid[curr_row + row_offset][curr_col + col_offset];
-        if (is_reachable(neighbor) && !neighbor.visited) {
-
-          // update distances of neighbor
-          double oldDist = distances[get_index(neighbor)];
-          double newDist = distances[get_index(b)] + 1 + calculate_distance(neighbor.coord, dest);
+        Block* neighbor = grid[curr_row + row_offset][curr_col + col_offset];
+        if (is_reachable(neighbor) && !neighbor->visited) {
+          neighbor->distance = distance;
+          neighbor->prev = &b;
           // add to queue
-          if (newDist < oldDist) {
-            neighbor.prev = &b;
-            distances[get_index(neighbor)] = newDist;
-            pq_add(priorityQueue, neighbor);
-          }
+          stack.push(*neighbor);
         }
       }
     }
@@ -241,18 +196,20 @@ void visit(Priority_Queue priorityQueue, Block b) {
 }
 
 
-void reset_list() {
+void reset_list(Block* list[], int* length) {
   for (int i = 0; i < 64; i++) list[i] = NULL;
-  list_length = 0;
+  *length = 0;
 }
 
-void list_add(Block* b) {
-  list[list_length++] = b;
+
+void list_add(Block* list[], Block* b, int* length) {
+  list[*length] = b;
+  (*length)++;
 }
 
-int find_in_list(Block* b) {
+int find_in_list(Block* list[], Block* b, int* length) {
   int curr_idx = 0;
-  while (curr_idx < list_length) {
+  while (curr_idx < *list_length) {
     if (list[curr_idx] == b) {
       return curr_idx;
     }
@@ -431,8 +388,8 @@ bool is_inbounds(Coordinate coord) {
 }
 
 byte get_index(Block b) {
-  short row = b.coord.row;
-  short col = b.coord.col;
+  byte row = b.coord.row;
+  byte col = b.coord.col;
   return col + (row * 16);
 }
 
@@ -478,57 +435,66 @@ double calculate_distance(Coordinate origin, Coordinate dest) {
   double origin_x = (double) origin.col;
   double dest_y = (double) dest.row;
   double dest_x = (double) dest.col;
-  return sqrt(SQUARE(origin_y - dest_y) + SQUARE(origin_x - dest_x));
+  return sqrt(pow((origin_y - dest_y), 2) + pow((origin_x - dest_x), 2));
 }
 
-bool is_empty(Priority_Queue priorityQueue) {
-  return priorityQueue.size > 0;
+bool is_empty(Block* priorityQueue[]) {
+  return size == 0;
 }
 
-Block* peek_highest_priority(Priority_Queue priorityQueue) {
-  if (priorityQueue.size == 0) {
+Block* peek_highest_priority(Block* priorityQueue[]) {
+  if (size == 0) {
     return NULL;
   } else {
-    return priorityQueue.data[0];
+    return priorityQueue[0];
   }
 }
 
-Block* pop_highest_priority(Priority_Queue priorityQueue) {
-  if (priorityQueue.size == 0) {
+Block* pop_highest_priority(Block* priorityQueue[]) {
+  if (size == 0) {
     return NULL;
   } else {
-    Block* to_return = priorityQueue.data[0];
-    priorityQueue.data[0] = priorityQueue.data[priorityQueue.size - 1];
+    Block* to_return = priorityQueue[0];
+    priorityQueue[0] = priorityQueue[size - 1];
     sink(priorityQueue, 0);
+    size--;
     return to_return;
   }
 }
 
-void pq_add(Priority_Queue priorityQueue, Block b) {
-  if (priorityQueue.size >= MAX_NUM_BLOCKS) return;
-  priorityQueue.data[priorityQueue.size] = &b;
-  swim(priorityQueue, priorityQueue.size);
-  priorityQueue.size++;
+void pq_add(Block* priorityQueue[], Block b) {
+  Serial.println("adding block to pq");
+  delay(1000);
+  if (size >= MAX_NUM_BLOCKS) return;
+  priorityQueue[size] = &b;
+  Serial.println("printing pq in pq_add");
+  delay(1000);
+  Serial.println(pq[0]->coord.row);
+  delay(1000);
+  Serial.println(pq[0]->coord.col);
+  swim(priorityQueue, size);
+  delay(1000);
+  size++;
 }
 
-void swap(Priority_Queue priorityQueue, short index_one, short index_two) {
-  Block* temp = priorityQueue.data[index_one];
-  priorityQueue.data[index_one] = priorityQueue.data[index_two];
-  priorityQueue.data[index_two] = temp;
+void swap(Block* priorityQueue[], byte index_one, byte index_two) {
+  Block* temp = priorityQueue[index_one];
+  priorityQueue[index_one] = priorityQueue[index_two];
+  priorityQueue[index_two] = temp;
 }
 
-void sink(Priority_Queue priorityQueue, byte index) {
+void sink(Block* priorityQueue[], byte index) {
   byte curr_index = index;
 
   // while we still have children in priorityQueue
-  while (LEFT_CHILD_INDEX(curr_index) < priorityQueue.size) {
-    Block* curr_block = priorityQueue.data[curr_index];
+  while (LEFT_CHILD_INDEX(curr_index) < size) {
+    Block* curr_block = priorityQueue[curr_index];
     byte smaller_index = LEFT_CHILD_INDEX(curr_index);
-    byte right_idx = (RIGHT_CHILD_INDEX(curr_index) < priorityQueue.size) ? RIGHT_CHILD_INDEX(curr_index) : -1;
-    Block* smaller_block = priorityQueue.data[smaller_index];
+    byte right_idx = (RIGHT_CHILD_INDEX(curr_index) < size) ? RIGHT_CHILD_INDEX(curr_index) : -1;
+    Block* smaller_block = priorityQueue[smaller_index];
     Block* right_block = NULL;
-    if (right_idx < priorityQueue.size) {
-      right_block = priorityQueue.data[right_idx];
+    if (right_idx < size) {
+      right_block = priorityQueue[right_idx];
     }
 
     if (right_block != NULL && get_distance(*right_block) < get_distance(*smaller_block)) {
@@ -546,15 +512,19 @@ void sink(Priority_Queue priorityQueue, byte index) {
   return;
 }
 
-void swim(Priority_Queue priorityQueue, byte index) {
+void swim(Block* priorityQueue[], byte index) {
+  Serial.println("swimming at index: ");
+  Serial.println(index);
+  delay(1000);
+
   byte curr_index = index;
 
   while (curr_index > 0) {
-    Block* curr_block = priorityQueue.data[curr_index];
+    Block* curr_block = priorityQueue[curr_index];
     byte parent_idx = PARENT_INDEX(curr_index);
     Block* parent_block = NULL;
     if (parent_idx >= 0) {
-      parent_block = priorityQueue.data[parent_idx];
+      parent_block = priorityQueue[parent_idx];
     }
 
     assert(parent_block);
