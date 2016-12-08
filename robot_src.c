@@ -15,6 +15,33 @@
 #define LENGTH 8
 #define WIDTH 8
 
+
+// Neil's hardware code
+#define leftPin A2
+#define rightPin A5
+#define frontPin A0
+
+#define DIR_PIN_LEFT 3
+#define STEP_PIN_LEFT 7
+
+#define DIR_PIN_RIGHT 5
+#define STEP_PIN_RIGHT 4
+
+bool returnedToPosition = true;
+bool finishedTurning = false;
+bool turnedLeft = false;
+bool turnedRight = false;
+bool movedForward = true;
+
+int flaggg = true;
+
+int irPin[3] = {frontPin, leftPin, rightPin};
+int i, j;
+double distance[3] = {0};
+
+// end neil's constants
+
+
 struct Coordinate {
   byte row;
   byte col;
@@ -41,6 +68,7 @@ Block curr_block;
 Coordinate origin;
 Priority_Queue pq;
 Coordinate current;
+int direction;
 
 Block* grid[LENGTH][WIDTH];
 
@@ -62,16 +90,39 @@ bool equals(Block b, Block d);
 byte get_index(Block b);
 double get_distance(Block b);
 bool is_inbounds(Coordinate coord);
+int get_direction(Block b); // gets the direction of block b with respect to current
 
-// TODO: Implement all functions below
 
 /* Returns if the dest block is reachable given the current block */
 bool is_reachable(Block dest);
+
+void rotateDeg(float deg, float speed, int dirPin, int stepPin);
+double get_IR (uint16_t value);
+void readIRValue();
+
+bool is_left_open();
+bool is_right_open();
+bool is_front_open();
+void move_forward_block();
+void turn_around();
+void turn_left();
+void turn_right();
+
 void move_robot(Block current, Block dest); /* Moves robot to dest block from current block */
 
-// END TODO
 
 void setup() {
+
+  // set up Neil's hardware code
+  Serial.begin (9600);
+  for(i = 0; i < 3; i++) pinMode(irPin[i], INPUT);
+  pinMode(DIR_PIN_LEFT, OUTPUT);
+  pinMode(STEP_PIN_LEFT, OUTPUT);
+  pinMode(DIR_PIN_RIGHT, OUTPUT);
+  pinMode(STEP_PIN_RIGHT, OUTPUT);
+  // end Neil's setup
+
+  direction = BOTTOM;
   memset(&distances, 1000, MAX_NUM_BLOCKS);
 
   dest = {.row = 0, .col = 0}; // reset this before solving maze
@@ -162,6 +213,56 @@ void visit(Priority_Queue pq, Block b) {
   }
 }
 
+// determines if a neighboring block is reachable
+bool is_reachable(Block b) {
+  int dir_block_b = get_direction(b);
+  // see where the block is in respect to current block
+  switch (dir_block_b) {
+    case TOP:
+      if (direction == TOP) {
+        return is_front_open();
+      } else if (direction == LEFT) {
+        return is_right_open();
+      } else if (direction == RIGHT) {
+        return is_left_open();
+      } else {
+        return true;
+      }
+    case LEFT:
+      if (direction == TOP) {
+        return is_left_open();
+      } else if (direction == LEFT) {
+        return is_front_open();
+      } else if (direction == RIGHT) {
+        return true;
+      } else {
+        return is_right_open();
+      }
+    case RIGHT:
+      if (direction == TOP) {
+        return is_right_open();
+      } else if (direction == LEFT) {
+        return true;
+      } else if (direction == RIGHT) {
+        return is_front_open();
+      } else {
+        return is_left_open();
+      }
+    case BOTTOM:
+      if (direction == TOP) {
+        return true;
+      } else if (direction == LEFT) {
+        return is_left_open();
+      } else if (direction == RIGHT) {
+        return is_right_open();
+      } else {
+        return is_front_open();
+      }
+  }
+
+  return false;
+}
+
 void move_robot(Block curr, Block dest) {
   if (equals(curr, dest)) return;
   // use previous fields to find a path from curr to dest
@@ -189,6 +290,31 @@ double square(double num) {
 
 double get_distance(Block b) {
   return distances[get_index(b)];
+}
+
+int get_direction(Block b) {
+  byte curr_row = curr_block.coord.row;
+  byte curr_col = curr_block.coord.col;
+  byte b_row = b.coord.row;
+  byte b_col = b.coord.col;
+
+  if (b_col == curr_col) {
+    if (curr_row < b_row) {
+      return BOTTOM;
+    } else {
+      return TOP;
+    }
+  }
+
+  if (b_row == curr_row) {
+    if (b_col < curr_col) {
+      return LEFT;
+    } else {
+      return RIGHT;
+    }
+  }
+
+  return TOP;
 }
 
 double calculate_distance(Coordinate origin, Coordinate dest) {
@@ -287,4 +413,82 @@ void swim(Priority_Queue pq, byte index) {
 
   return;
 }
+
+// begin Neil's hardware code
+
+void rotateDeg(float deg, float speed, int dirPin, int stepPin){ 
+  //rotate a specific number of degrees (negitive for reverse movement)
+  //speed is any number from .01 -> 1 with 1 being fastest - Slower is stronger
+  int dir = (deg > 0)? HIGH:LOW;
+  digitalWrite(dirPin,dir); 
+
+  int steps = abs(deg)*(1/0.225);
+  float usDelay = (1/speed) * 70;
+
+  for(int i=0; i < steps; i++){ 
+    digitalWrite(stepPin, HIGH); 
+    delayMicroseconds(usDelay); 
+    digitalWrite(stepPin, LOW); 
+    delayMicroseconds(usDelay); 
+  }
+}
+
+double get_IR (uint16_t value) {
+  if (value < 16)  value = 16;
+  return 2076.0 / (value - 11.0);
+}
+
+void readIRValue() {
+  float readVal[3] = {0};
+  int nSamples = 3;
+
+  for(i = 0; i < nSamples; i++){
+    for(j = 0; j < 3; j++){
+      readVal[j] = (float)(analogRead(irPin[j]));
+      distance[j] = get_IR(readVal[j]);
+    }
+  }
+}
+
+bool is_front_open() {
+  return distance[0] > 10;
+}
+
+bool is_left_open() {
+  return distance[1] > 10;
+}
+
+bool is_right_open() {  
+  return distance[2] > 10;
+}
+
+void turn_left() {
+  for (int i = 0; i < 180; i++) {
+    rotateDeg(-1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
+    rotateDeg(-1, 0.1, DIR_PIN_RIGHT, STEP_PIN_RIGHT);
+  }
+}
+
+void turn_right() {
+  for (int i = 0; i < 180; i++) {
+    rotateDeg(1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
+    rotateDeg(1, 0.1, DIR_PIN_RIGHT, STEP_PIN_RIGHT);
+    }
+}
+
+
+void move_forward_block() {
+  for (int i = 0; i < 360; i++) {
+    rotateDeg(-1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
+    rotateDeg(1, 0.1, DIR_PIN_RIGHT, STEP_PIN_RIGHT);
+    }
+}
+
+void turn_around() {
+  for (int i = 0; i < 360; i++) {
+    rotateDeg(1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
+    rotateDeg(1, 0.1, DIR_PIN_RIGHT, STEP_PIN_RIGHT);
+    }
+}
+
 
