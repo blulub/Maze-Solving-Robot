@@ -69,6 +69,7 @@ Coordinate origin;
 Priority_Queue pq;
 Coordinate current;
 int direction;
+bool run_once = true;
 
 Block* grid[LENGTH][WIDTH];
 
@@ -161,7 +162,10 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  run_Astar(pq);
+  if (run_once) {
+    run_once = false;
+    run_Astar(pq);
+  }
 }
 
 int run_Astar(Priority_Queue priorityQueue) {
@@ -169,6 +173,10 @@ int run_Astar(Priority_Queue priorityQueue) {
   curr_block = start_block;
   pq_add(priorityQueue, start_block);
 
+  Serial.println("starting block coordinates: ");
+  Serial.println(curr_block.coord.row);
+  Serial.println(curr_block.coord.col);
+  Serial.println("size of pq:");
   Serial.println(priorityQueue.size);
 
   // distance to start is 0 + heuristic
