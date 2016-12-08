@@ -12,7 +12,8 @@
 #define BOTTOM 3
 #define LENGTH 8
 #define WIDTH 8
-
+#define DEST_ROW 2
+#define DEST_COL 2
 
 // Neil's hardware code
 #define leftPin A2
@@ -120,13 +121,23 @@ void setup() {
   for (int row = 0; row < LENGTH; row++) {
     for (int col = 0; col < WIDTH; col++) {
       if (row == dest.row && col == dest.col) {
-        grid[row][col] = &dest_block;
+        grid[row][col].coord.row = DEST_ROW;
+        grid[row][col].coord.row = DEST_COL;
+        grid[row][col].visited = false;
+        grid[row][col].prev = NULL;
+        grid[row][col].distance = -1;
       } else if (row == 0 && col == 0) {
-        grid[row][col] = &curr_block;
+        grid[row][col].coord.row = 0;
+        grid[row][col].coord.col = 0;
+        grid[row][col].visited = false;
+        grid[row][col].prev = NULL;
+        grid[row][col].distance = 0;
       } else {
-        Coordinate coord = {row, col};
-        Block new_block = {coord, false, -1, NULL};
-        grid[row][col] = &new_block;
+        grid[row][col].coord.row = row;
+        grid[row][col].coord.col = col;
+        grid[row][col].visited = false;
+        grid[row][col].prev = NULL;
+        grid[row][col].distance = -1;
       }
     }
   }
