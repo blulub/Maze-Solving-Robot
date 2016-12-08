@@ -164,19 +164,19 @@ void loop() {
   run_Astar(pq);
 }
 
-int run_Astar(Priority_Queue pq) {
+int run_Astar(Priority_Queue priorityQueue) {
   Block start_block = *grid[0][0];
   curr_block = start_block;
-  pq_add(pq, start_block);
+  pq_add(priorityQueue, start_block);
 
-  Serial.println(pq.size);
+  Serial.println(priorityQueue.size);
 
   // distance to start is 0 + heuristic
   distances[get_index(start_block)] = 0 + calculate_distance(start_block.coord, dest);
 
-  // while pq not empty, go to most optimal
-  while (!is_empty(pq)) {
-    Block* best_block = pop_highest_priority(pq);
+  // while priorityQueue not empty, go to most optimal
+  while (!is_empty(priorityQueue)) {
+    Block* best_block = pop_highest_priority(priorityQueue);
     assert(best_block != NULL);
     if (best_block->visited) {
       continue;
@@ -189,14 +189,14 @@ int run_Astar(Priority_Queue pq) {
     if (equals(*best_block, dest_block)) {
       return 1;
     } else {
-      visit(pq, *best_block);
+      visit(priorityQueue, *best_block);
     }
   }
 
   return 0;
 }
 
-void visit(Priority_Queue pq, Block b) {
+void visit(Priority_Queue priorityQueue, Block b) {
   b.visited = true;
   byte curr_row = b.coord.row;
   byte curr_col = b.coord.col;
@@ -220,7 +220,7 @@ void visit(Priority_Queue pq, Block b) {
           if (newDist < oldDist) {
             neighbor.prev = &b;
             distances[get_index(neighbor)] = newDist;
-            pq_add(pq, neighbor);
+            pq_add(priorityQueue, neighbor);
           }
         }
       }
