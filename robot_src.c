@@ -161,13 +161,15 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  run_Astar();
+  run_Astar(pq);
 }
 
 int run_Astar(Priority_Queue pq) {
   Block start_block = *grid[0][0];
   curr_block = start_block;
   pq_add(pq, start_block);
+
+  Serial.println(pq.size);
 
   // distance to start is 0 + heuristic
   distances[get_index(start_block)] = 0 + calculate_distance(start_block.coord, dest);
@@ -467,54 +469,54 @@ double calculate_distance(Coordinate origin, Coordinate dest) {
   return sqrt(SQUARE(origin_y - dest_y) + SQUARE(origin_x - dest_x));
 }
 
-bool is_empty(Priority_Queue pq) {
-  return !pq.size;
+bool is_empty(Priority_Queue priorityQueue) {
+  return priorityQueue.size > 0;
 }
 
-Block* peek_highest_priority(Priority_Queue pq) {
-  if (pq.size == 0) {
+Block* peek_highest_priority(Priority_Queue priorityQueue) {
+  if (priorityQueue.size == 0) {
     return NULL;
   } else {
-    return pq.data[0];
+    return priorityQueue.data[0];
   }
 }
 
-Block* pop_highest_priority(Priority_Queue pq) {
-  if (pq.size == 0) {
+Block* pop_highest_priority(Priority_Queue priorityQueue) {
+  if (priorityQueue.size == 0) {
     return NULL;
   } else {
-    Block* to_return = pq.data[0];
-    pq.data[0] = pq.data[pq.size - 1];
-    sink(pq, 0);
+    Block* to_return = priorityQueue.data[0];
+    priorityQueue.data[0] = priorityQueue.data[priorityQueue.size - 1];
+    sink(priorityQueue, 0);
     return to_return;
   }
 }
 
-void pq_add(Priority_Queue pq, Block b) {
-  if (pq.size >= MAX_NUM_BLOCKS) return;
-  pq.data[pq.size] = &b;
-  swim(pq, pq.size);
-  pq.size++;
+void pq_add(Priority_Queue priorityQueue, Block b) {
+  if (priorityQueue.size >= MAX_NUM_BLOCKS) return;
+  priorityQueue.data[priorityQueue.size] = &b;
+  swim(priorityQueue, priorityQueue.size);
+  priorityQueue.size++;
 }
 
-void swap(Priority_Queue pq, short index_one, short index_two) {
-  Block* temp = pq.data[index_one];
-  pq.data[index_one] = pq.data[index_two];
-  pq.data[index_two] = temp;
+void swap(Priority_Queue priorityQueue, short index_one, short index_two) {
+  Block* temp = priorityQueue.data[index_one];
+  priorityQueue.data[index_one] = priorityQueue.data[index_two];
+  priorityQueue.data[index_two] = temp;
 }
 
-void sink(Priority_Queue pq, byte index) {
+void sink(Priority_Queue priorityQueue, byte index) {
   byte curr_index = index;
 
-  // while we still have children in pq
-  while (LEFT_CHILD_INDEX(curr_index) < pq.size) {
-    Block* curr_block = pq.data[curr_index];
+  // while we still have children in priorityQueue
+  while (LEFT_CHILD_INDEX(curr_index) < priorityQueue.size) {
+    Block* curr_block = priorityQueue.data[curr_index];
     byte smaller_index = LEFT_CHILD_INDEX(curr_index);
-    byte right_idx = (RIGHT_CHILD_INDEX(curr_index) < pq.size) ? RIGHT_CHILD_INDEX(curr_index) : -1;
-    Block* smaller_block = pq.data[smaller_index];
+    byte right_idx = (RIGHT_CHILD_INDEX(curr_index) < priorityQueue.size) ? RIGHT_CHILD_INDEX(curr_index) : -1;
+    Block* smaller_block = priorityQueue.data[smaller_index];
     Block* right_block = NULL;
-    if (right_idx < pq.size) {
-      right_block = pq.data[right_idx];
+    if (right_idx < priorityQueue.size) {
+      right_block = priorityQueue.data[right_idx];
     }
 
     if (right_block != NULL && get_distance(*right_block) < get_distance(*smaller_block)) {
@@ -522,7 +524,7 @@ void sink(Priority_Queue pq, byte index) {
     }
 
     if (get_distance(*smaller_block) < get_distance(*curr_block)) {
-      swap(pq, smaller_index, curr_index);
+      swap(priorityQueue, smaller_index, curr_index);
       curr_index = smaller_index;
     } else {
       return;
@@ -532,21 +534,21 @@ void sink(Priority_Queue pq, byte index) {
   return;
 }
 
-void swim(Priority_Queue pq, byte index) {
+void swim(Priority_Queue priorityQueue, byte index) {
   byte curr_index = index;
 
   while (curr_index > 0) {
-    Block* curr_block = pq.data[curr_index];
+    Block* curr_block = priorityQueue.data[curr_index];
     byte parent_idx = PARENT_INDEX(curr_index);
     Block* parent_block = NULL;
     if (parent_idx >= 0) {
-      parent_block = pq.data[parent_idx];
+      parent_block = priorityQueue.data[parent_idx];
     }
 
     assert(parent_block);
     
     if (get_distance(*parent_block) > get_distance(*curr_block)) {
-      swap(pq, parent_idx, curr_index);
+      swap(priorityQueue, parent_idx, curr_index);
       curr_index = parent_idx;
     } else {
       return;
