@@ -72,6 +72,10 @@ int direction;
 
 Block* grid[LENGTH][WIDTH];
 
+// list to backtrack
+Block* list[64];
+int list_length;
+
 // map of block ids to distances
 double distances[MAX_NUM_BLOCKS];
 
@@ -91,15 +95,22 @@ byte get_index(Block b);
 double get_distance(Block b);
 bool is_inbounds(Coordinate coord);
 int get_direction(Block b); // gets the direction of block b with respect to current
+void find_path(Block* path[], Block dest);
+void move_to_neighbor_block(Block dest);
+int negate_direction(int dir);
+int change_direction(int dir, int neg);
+
+// list functions
+void reset_list();
+void list_add(Block* b);
+int find_in_list(Block* b);
 
 
 /* Returns if the dest block is reachable given the current block */
 bool is_reachable(Block dest);
-
 void rotateDeg(float deg, float speed, int dirPin, int stepPin);
 double get_IR (uint16_t value);
 void readIRValue();
-
 bool is_left_open();
 bool is_right_open();
 bool is_front_open();
@@ -107,9 +118,7 @@ void move_forward_block();
 void turn_around();
 void turn_left();
 void turn_right();
-
 void move_robot(Block current, Block dest); /* Moves robot to dest block from current block */
-
 
 void setup() {
 
@@ -124,6 +133,10 @@ void setup() {
 
   direction = BOTTOM;
   memset(&distances, 1000, MAX_NUM_BLOCKS);
+
+  // setting list to all NULLS
+  for (int i = 0; i < 64; i++) list[i] = NULL;
+  list_length = 0;
 
   dest = {.row = 0, .col = 0}; // reset this before solving maze
   dest_block = {dest, 0, NULL};
@@ -213,6 +226,27 @@ void visit(Priority_Queue pq, Block b) {
   }
 }
 
+
+void reset_list() {
+  for (int i = 0; i < 64; i++) list[i] = NULL;
+  list_length = 0;
+}
+
+void list_add(Block* b) {
+  list[list_length++] = b;
+}
+
+int find_in_list(Block* b) {
+  int curr_idx = 0;
+  while (curr_idx < list_length) {
+    if (list[curr_idx] == b) {
+      return curr_idx;
+    }
+    curr_idx++;
+  }
+  return -1;
+}
+
 // determines if a neighboring block is reachable
 bool is_reachable(Block b) {
   int dir_block_b = get_direction(b);
@@ -266,8 +300,116 @@ bool is_reachable(Block b) {
 void move_robot(Block curr, Block dest) {
   if (equals(curr, dest)) return;
   // use previous fields to find a path from curr to dest
+  Block* path[64];
+  for (int i = 0; i < 64; i++) path[i] = NULL;
 
-  // move robot using discrete movements
+  reset_list();
+  Block* cursor = &curr;
+  // fill previous list
+  while (cursor != NULL) {
+    list_add(cursor);
+    cursor = cursor->prev;
+  }
+
+  // find a path from curr_block to dest
+  find_path(path, dest);
+
+  int next_block_idx = 0;
+  while (!equals(curr_block, dest)) {
+    move_to_neighbor_block(*path[next_block_idx]);
+    curr_block = *path[next_block_idx];
+  }
+}
+
+void find_path(Block* path[], Block dest) {
+  // keep going back until we find a match in previous path
+  int found_idx = -1;
+  int path_length = 0;
+  Block* curr_dest = &dest;
+
+  Block* dest_previous[64];
+  int dest_previous_length = 0;
+
+  while (curr_dest != NULL) {
+    dest_previous[dest_previous_length] = curr_dest;
+    dest_previous_length++;
+    found_idx = find_in_list(curr_dest);
+    if (found_idx == -1) {
+      curr_dest = curr_dest->prev;
+    } else {
+      break;
+    }
+  }
+
+  // found_idx contains the LCA, must add to path
+  for (int i = 0; i <= found_idx; i++) {
+    path[path_length] = list[i];
+    path_length++;
+  }
+
+  // now add the ancestors 
+  for (int i = dest_previous_length - 1; i >= 0; i--) {
+    path[path_length] = dest_previous[i];
+    path_length++;
+  }
+}
+
+void move_to_neighbor_block(Block dest) {
+  int dir_to_dest = get_direction(dest);
+  switch (dir_to_dest) {
+    case TOP:
+      if (direction == TOP) {
+        move_forward_block();
+      } else if (direction == BOTTOM) {
+        turn_around();
+        move_forward_block();
+      } else if (direction == LEFT) {
+        turn_right();
+        move_forward_block();
+      } else if (direction == RIGHT) {
+        turn_left();
+        move_forward_block();
+      }
+    case BOTTOM:
+      if (direction == TOP) {
+        turn_around();
+        move_forward_block();
+      } else if (direction == BOTTOM) {
+        move_forward_block();
+      } else if (direction == LEFT) {
+        turn_left();
+        move_forward_block();
+      } else if (direction == RIGHT) {
+        turn_right();
+        move_forward_block();
+      }
+    case LEFT:
+      if (direction == TOP) {
+        turn_left();
+        move_forward_block();
+      } else if (direction == BOTTOM) {
+        turn_right();
+        move_forward_block();
+      } else if (direction == LEFT) {
+        move_forward_block();
+      } else if (direction == RIGHT) {
+        turn_around();
+        move_forward_block();
+      }
+    case RIGHT:
+      if (direction == TOP) {
+        turn_right();
+        move_forward_block();
+      } else if (direction == BOTTOM) {
+        turn_left();
+        move_forward_block();
+      } else if (direction == LEFT) {
+        turn_around();
+        move_forward_block();
+      } else if (direction == RIGHT) {
+        move_forward_block();
+      }
+  }
 }
 
 bool is_inbounds(Coordinate coord) {
@@ -467,13 +609,17 @@ void turn_left() {
     rotateDeg(-1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
     rotateDeg(-1, 0.1, DIR_PIN_RIGHT, STEP_PIN_RIGHT);
   }
+  delay(3000);
+  direction = change_direction(direction, -1);
 }
 
 void turn_right() {
   for (int i = 0; i < 180; i++) {
     rotateDeg(1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
     rotateDeg(1, 0.1, DIR_PIN_RIGHT, STEP_PIN_RIGHT);
-    }
+  }
+  delay(3000);
+  direction = change_direction(direction, 1);
 }
 
 
@@ -481,14 +627,57 @@ void move_forward_block() {
   for (int i = 0; i < 360; i++) {
     rotateDeg(-1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
     rotateDeg(1, 0.1, DIR_PIN_RIGHT, STEP_PIN_RIGHT);
-    }
+  }
+  delay(3000);
 }
 
 void turn_around() {
   for (int i = 0; i < 360; i++) {
     rotateDeg(1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
     rotateDeg(1, 0.1, DIR_PIN_RIGHT, STEP_PIN_RIGHT);
+  }
+  delay(3000);
+  direction = negate_direction(direction);
+}
+
+int negate_direction(int direction) {
+  switch (direction) {
+    case TOP:
+      return BOTTOM;
+    case BOTTOM:
+      return TOP;
+    case LEFT:
+      return RIGHT;
+    case RIGHT:
+      return LEFT;
+  }
+}
+
+int change_direction(int dir, int num) {
+  // if turning right
+  if (num > 0) {
+    switch (dir) {
+      case TOP:
+        return RIGHT;
+      case BOTTOM:
+        return LEFT;
+      case LEFT:
+        return TOP;
+      case RIGHT:
+        return BOTTOM;
     }
+  } else {
+    switch (dir) {
+      case TOP:
+        return LEFT;
+      case BOTTOM:
+        return RIGHT;
+      case LEFT:
+        return BOTTOM;
+      case RIGHT:
+        return TOP;
+    }
+  }
 }
 
 
