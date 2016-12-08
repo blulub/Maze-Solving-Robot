@@ -169,6 +169,7 @@ void loop() {
 }
 
 int run_Astar(Priority_Queue priorityQueue) {
+  Serial.println("fucking Astar");
   Block start_block = *grid[0][0];
   curr_block = start_block;
   pq_add(priorityQueue, start_block);
