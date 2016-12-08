@@ -2,8 +2,28 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <math.h>
-#include <QueueList.h>
 #include <StackList.h>
+
+// Neil's hardware code
+#define leftPin A2
+#define rightPin A5
+#define frontPin A0
+#define DIR_PIN_LEFT 3
+#define STEP_PIN_LEFT 7
+#define DIR_PIN_RIGHT 5
+#define STEP_PIN_RIGHT 4
+
+bool returnedToPosition = true;
+bool finishedTurning = false;
+bool turnedLeft = false;
+bool turnedRight = false;
+bool movedForward = true;
+int flaggg = true;
+int irPin[3] = {frontPin, leftPin, rightPin};
+int i, j;
+double distance[3] = {0};
+// end neil's constants
+
 
 #define MAX_NUM_BLOCKS 64
 #define LEFT 0
@@ -14,32 +34,6 @@
 #define WIDTH 8
 #define DEST_ROW 2
 #define DEST_COL 2
-
-// Neil's hardware code
-#define leftPin A2
-#define rightPin A5
-#define frontPin A0
-
-#define DIR_PIN_LEFT 3
-#define STEP_PIN_LEFT 7
-
-#define DIR_PIN_RIGHT 5
-#define STEP_PIN_RIGHT 4
-
-bool returnedToPosition = true;
-bool finishedTurning = false;
-bool turnedLeft = false;
-bool turnedRight = false;
-bool movedForward = true;
-
-int flaggg = true;
-
-int irPin[3] = {frontPin, leftPin, rightPin};
-int i, j;
-double distance[3] = {0};
-
-// end neil's constants
-
 
 struct Coordinate {
   int row;
@@ -56,36 +50,37 @@ struct Block {
 typedef struct Coordinate Coordinate;
 typedef struct Block Block;
 
-Block dest_block;
-Block curr_block;
+Block* dest_block_ptr;
+Block* curr_block_ptr;
 int direction;
 int curr_distance;
 bool run_once = true;
 Block grid[LENGTH][WIDTH];
-StackList<Block> stack;
+StackList<Block*> stack;
 
-Block* curr_previous[64];
+Block* curr_previous[MAX_NUM_BLOCKS];
 int curr_previous_length = 0;
-Block* dest_previous[64];
+Block* dest_previous[MAX_NUM_BLOCKS];
 int dest_previous_length = 0;
-Block* path[64];
+Block* path[MAX_NUM_BLOCKS];
 int path_length = 0;
 
 
-double calculate_distance(Coordinate origin, Coordinate dest);
-int run_Astar(Block* pq[]);
-void visit(Block* pq[], Block b);
-bool equals(Block b, Block d);
-double get_distance(Block b);
+int run_floodfill();
+void visit(Block* b);
+bool equals(Block* b, Block* d);
 bool is_inbounds(Coordinate coord);
-int get_direction(Block b); // gets the direction of block b with respect to current
-void find_path(Block* path[], Block dest);
-void move_to_neighbor_block(Block dest);
+int get_direction(Block* b); // gets the direction of block b with respect to current
+void find_path(Block* path[], Block* dest);
+void move_to_neighbor_block(Block* dest);
 int negate_direction(int dir);
 int change_direction(int dir, int neg);
+void reset_list(Block* list[], int* length);
+void list_add(Block* list[], Block* val, int* length);
+int find_in_list(Block* list[], Block* val, int* length);
+bool is_reachable(Block dest);
 
 /* Returns if the dest block is reachable given the current block */
-bool is_reachable(Block dest);
 void rotateDeg(float deg, float speed, int dirPin, int stepPin);
 double get_IR (uint16_t value);
 void readIRValue();
@@ -96,7 +91,7 @@ void move_forward_block();
 void turn_around();
 void turn_left();
 void turn_right();
-void move_robot(Block current, Block dest); /* Moves robot to dest block from current block */
+void move_robot(Block* current, Block* dest); /* Moves robot to dest block from current block */
 
 void setup() {
 
@@ -114,13 +109,10 @@ void setup() {
   reset_list(dest_previous, dest_previous_length);
   reset_list(path, path_length);
 
-  dest_block = {{2, 2}, false, -1, NULL};
-  curr_block = {{0, 0}, false, 0, NULL};
-
   // create blocks to fill in grid
   for (int row = 0; row < LENGTH; row++) {
     for (int col = 0; col < WIDTH; col++) {
-      if (row == dest.row && col == dest.col) {
+      if (row == DEST_ROW && col == DEST_COL) {
         grid[row][col].coord.row = DEST_ROW;
         grid[row][col].coord.row = DEST_COL;
         grid[row][col].visited = false;
@@ -141,49 +133,45 @@ void setup() {
       }
     }
   }
+
+  curr_block_ptr = &(grid[0][0]);
+  dest_block_ptr = &(grid[DEST_ROW][DEST_COL]);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   if (run_once) {
     run_once = false;
-    run_Astar(pq);
+    run_floodfill();
   }
 }
 
-int run_Astar(Block* priorityQueue[]) {
-  stack.push(curr_block);
-  
-  // while priorityQueue not empty, go to most optimal
+int run_floodfill() {
+  // push starting block onto stack
+  stack.push(curr_block_ptr);
+  // while stack not empty, go to most optimal
   while (!stack.isEmpty()) {
-    Block best_block = stack.pop();
-
-    if (best_block.visited) {
-      continue;
-    }
-
+    Block* best_block_ptr = stack.pop();
+    if (best_block_ptr->visited) continue;
     // move robot to best_block;
-    move_robot(curr_block, best_block);
-    curr_block = best_block;
-
+    move_robot(curr_block_ptr, best_block_ptr);
+    curr_block_ptr = best_block_ptr;
     // wait for robot to move to best_block?
     delay(3000);
-
-    if (equals(best_block, dest_block)) {
+    if (equals(best_block_ptr, dest_block_ptr)) {
       return 1;
     } else {
-      visit(best_block);
+      visit(best_block_ptr);
     }
   }
-
   return 0;
 }
 
-void visit(Block b) {
-  b.visited = true;
-  byte curr_row = b.coord.row;
-  byte curr_col = b.coord.col;
-  distance = b.distance + 1;
+void visit(Block* b) {
+  b->visited = true;
+  int curr_row = b->coord.row;
+  int curr_col = b->coord.col;
+  curr_distance = b->distance + 1;
 
   // for every neighbor, check if we have a shorter distance
   for (int row_offset = -1; row_offset <= 1; row_offset++) {
@@ -194,12 +182,12 @@ void visit(Block b) {
       if (row_offset ^ col_offset && is_inbounds(new_coord)) {
 
         // get the neighbor from the grid, make sure it's reachable and hasn't been seen
-        Block* neighbor = grid[curr_row + row_offset][curr_col + col_offset];
-        if (is_reachable(neighbor) && !neighbor->visited) {
-          neighbor->distance = distance;
-          neighbor->prev = &b;
+        Block neighbor = grid[curr_row + row_offset][curr_col + col_offset];
+        if (is_reachable(neighbor) && !neighbor.visited) {
+          neighbor.distance = distance;
+          neighbor.prev = b;
           // add to queue
-          stack.push(*neighbor);
+          stack.push(&neighbor);
         }
       }
     }
@@ -220,7 +208,7 @@ void list_add(Block* list[], Block* b, int* length) {
 
 int find_in_list(Block* list[], Block* b, int* length) {
   int curr_idx = 0;
-  while (curr_idx < *list_length) {
+  while (curr_idx < *length) {
     if (list[curr_idx] == b) {
       return curr_idx;
     }
@@ -231,7 +219,7 @@ int find_in_list(Block* list[], Block* b, int* length) {
 
 // determines if a neighboring block is reachable
 bool is_reachable(Block b) {
-  int dir_block_b = get_direction(b);
+  int dir_block_b = get_direction(&b);
   // see where the block is in respect to current block
   switch (dir_block_b) {
     case TOP:
@@ -279,43 +267,38 @@ bool is_reachable(Block b) {
   return false;
 }
 
-void move_robot(Block curr, Block dest) {
-  if (equals(curr, dest)) return;
+void move_robot(Block* curr_ptr, Block* dest_ptr) {
+  if (curr_ptr == dest_ptr) return;
   // use previous fields to find a path from curr to dest
-  Block* path[64];
-  for (int i = 0; i < 64; i++) path[i] = NULL;
-
-  reset_list();
-  Block* cursor = &curr;
+  reset_list(curr_previous, &curr_previous_length);
+  Block* cursor = curr_block_ptr;
   // fill previous list
   while (cursor != NULL) {
-    list_add(cursor);
+    list_add(curr_previous, cursor, &curr_previous_length);
     cursor = cursor->prev;
   }
 
   // find a path from curr_block to dest
-  find_path(path, dest);
+  find_path(path, dest_ptr);
 
   int next_block_idx = 0;
-  while (!equals(curr_block, dest)) {
-    move_to_neighbor_block(*path[next_block_idx]);
-    curr_block = *path[next_block_idx];
+  while (!equals(curr_block_ptr, dest_ptr)) {
+    move_to_neighbor_block(path[next_block_idx]);
+    curr_block_ptr = path[next_block_idx];
+    next_block_idx++;
   }
 }
 
-void find_path(Block* path[], Block dest) {
+void find_path(Block* path[], Block* dest) {
   // keep going back until we find a match in previous path
+  reset_list(dest_previous, &dest_previous_length);
+  reset_list(path, &path_length);
   int found_idx = -1;
-  int path_length = 0;
-  Block* curr_dest = &dest;
 
-  Block* dest_previous[64];
-  int dest_previous_length = 0;
-
+  Block* curr_dest = dest;
   while (curr_dest != NULL) {
-    dest_previous[dest_previous_length] = curr_dest;
-    dest_previous_length++;
-    found_idx = find_in_list(curr_dest);
+    list_add(dest_previous, curr_dest, &dest_previous_length);
+    found_idx = find_in_list(curr_previous, curr_dest, &curr_previous_length);
     if (found_idx == -1) {
       curr_dest = curr_dest->prev;
     } else {
@@ -325,18 +308,16 @@ void find_path(Block* path[], Block dest) {
 
   // found_idx contains the LCA, must add to path
   for (int i = 0; i <= found_idx; i++) {
-    path[path_length] = list[i];
-    path_length++;
+    list_add(path, curr_previous[i], &path_length);
   }
 
-  // now add the ancestors 
+  // now add the ancestors of dest
   for (int i = dest_previous_length - 1; i >= 0; i--) {
-    path[path_length] = dest_previous[i];
-    path_length++;
+    list_add(path, dest_previous[i], &path_length);
   }
 }
 
-void move_to_neighbor_block(Block dest) {
+void move_to_neighbor_block(Block* dest) {
   int dir_to_dest = get_direction(dest);
   switch (dir_to_dest) {
     case TOP:
@@ -398,32 +379,18 @@ bool is_inbounds(Coordinate coord) {
   return (coord.row >= 0 && coord.row < LENGTH && coord.col >= 0 && coord.col < WIDTH);
 }
 
-byte get_index(Block b) {
-  byte row = b.coord.row;
-  byte col = b.coord.col;
-  return col + (row * 16);
+bool equals(Block* b, Block* d) {
+  return b->coord.row == d->coord.row && b->coord.col == d->coord.col;
 }
 
-bool equals(Block b, Block d) {
-  return b.coord.row == d.coord.row && b.coord.col == d.coord.col;
-}
-
-double square(double num) {
-  return num * num;
-}
-
-double get_distance(Block b) {
-  return distances[get_index(b)];
-}
-
-int get_direction(Block b) {
-  byte curr_row = curr_block.coord.row;
-  byte curr_col = curr_block.coord.col;
-  byte b_row = b.coord.row;
-  byte b_col = b.coord.col;
+int get_direction(Block* b) {
+  int curr_row = curr_block_ptr->coord.row;
+  int curr_col = curr_block_ptr->coord.col;
+  int b_row = b->coord.row;
+  int b_col = b->coord.col;
 
   if (b_col == curr_col) {
-    if (curr_row < b_row) {
+    if (b_row > curr_row) {
       return BOTTOM;
     } else {
       return TOP;
@@ -441,118 +408,8 @@ int get_direction(Block b) {
   return TOP;
 }
 
-double calculate_distance(Coordinate origin, Coordinate dest) {
-  double origin_y = (double) origin.row;
-  double origin_x = (double) origin.col;
-  double dest_y = (double) dest.row;
-  double dest_x = (double) dest.col;
-  return sqrt(pow((origin_y - dest_y), 2) + pow((origin_x - dest_x), 2));
-}
-
-bool is_empty(Block* priorityQueue[]) {
-  return size == 0;
-}
-
-Block* peek_highest_priority(Block* priorityQueue[]) {
-  if (size == 0) {
-    return NULL;
-  } else {
-    return priorityQueue[0];
-  }
-}
-
-Block* pop_highest_priority(Block* priorityQueue[]) {
-  if (size == 0) {
-    return NULL;
-  } else {
-    Block* to_return = priorityQueue[0];
-    priorityQueue[0] = priorityQueue[size - 1];
-    sink(priorityQueue, 0);
-    size--;
-    return to_return;
-  }
-}
-
-void pq_add(Block* priorityQueue[], Block b) {
-  Serial.println("adding block to pq");
-  delay(1000);
-  if (size >= MAX_NUM_BLOCKS) return;
-  priorityQueue[size] = &b;
-  Serial.println("printing pq in pq_add");
-  delay(1000);
-  Serial.println(pq[0]->coord.row);
-  delay(1000);
-  Serial.println(pq[0]->coord.col);
-  swim(priorityQueue, size);
-  delay(1000);
-  size++;
-}
-
-void swap(Block* priorityQueue[], byte index_one, byte index_two) {
-  Block* temp = priorityQueue[index_one];
-  priorityQueue[index_one] = priorityQueue[index_two];
-  priorityQueue[index_two] = temp;
-}
-
-void sink(Block* priorityQueue[], byte index) {
-  byte curr_index = index;
-
-  // while we still have children in priorityQueue
-  while (LEFT_CHILD_INDEX(curr_index) < size) {
-    Block* curr_block = priorityQueue[curr_index];
-    byte smaller_index = LEFT_CHILD_INDEX(curr_index);
-    byte right_idx = (RIGHT_CHILD_INDEX(curr_index) < size) ? RIGHT_CHILD_INDEX(curr_index) : -1;
-    Block* smaller_block = priorityQueue[smaller_index];
-    Block* right_block = NULL;
-    if (right_idx < size) {
-      right_block = priorityQueue[right_idx];
-    }
-
-    if (right_block != NULL && get_distance(*right_block) < get_distance(*smaller_block)) {
-      smaller_block = right_block;
-    }
-
-    if (get_distance(*smaller_block) < get_distance(*curr_block)) {
-      swap(priorityQueue, smaller_index, curr_index);
-      curr_index = smaller_index;
-    } else {
-      return;
-    }
-  }
-
-  return;
-}
-
-void swim(Block* priorityQueue[], byte index) {
-  Serial.println("swimming at index: ");
-  Serial.println(index);
-  delay(1000);
-
-  byte curr_index = index;
-
-  while (curr_index > 0) {
-    Block* curr_block = priorityQueue[curr_index];
-    byte parent_idx = PARENT_INDEX(curr_index);
-    Block* parent_block = NULL;
-    if (parent_idx >= 0) {
-      parent_block = priorityQueue[parent_idx];
-    }
-
-    assert(parent_block);
-    
-    if (get_distance(*parent_block) > get_distance(*curr_block)) {
-      swap(priorityQueue, parent_idx, curr_index);
-      curr_index = parent_idx;
-    } else {
-      return;
-    }
-  }
-
-  return;
-}
 
 // begin Neil's hardware code
-
 void rotateDeg(float deg, float speed, int dirPin, int stepPin){ 
   //rotate a specific number of degrees (negitive for reverse movement)
   //speed is any number from .01 -> 1 with 1 being fastest - Slower is stronger
