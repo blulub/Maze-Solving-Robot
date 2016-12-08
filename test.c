@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#define ABS(x) (-x)
 // defines a coordinate
 typedef struct Coordinate {
 	int row;
@@ -25,6 +26,7 @@ int length;
 // fills in the global grid of blocks
 void fillGrid();
 void changeGrid();
+void print(char* string);
 
 
 void fillGrid(int* length) {
@@ -45,6 +47,10 @@ void changeGrid() {
 	length = 10;
 }
 
+void print(char* string) {
+	printf("%s\n", string);
+}
+
 int main() {
 	// fill the global grid, then print it
 	fillGrid(&length);
@@ -55,6 +61,8 @@ int main() {
 	printf("%d, %d\n", (grid[2][2]).coord.row, (grid[2][2]).coord.col);
 	printf("%d, %d\n", (grid[0][0]).coord.row, (grid[0][0]).coord.col);
 	printf("length: %d\n", length);
+	print("hello");
+	printf("%d\n", ABS(-5));
 }
 
 

@@ -12,6 +12,7 @@
 #define STEP_PIN_LEFT 7
 #define DIR_PIN_RIGHT 5
 #define STEP_PIN_RIGHT 4
+#define ABS(x) (-x)
 
 bool returnedToPosition = true;
 bool finishedTurning = false;
@@ -94,7 +95,6 @@ void turn_right();
 void move_robot(Block* current, Block* dest); /* Moves robot to dest block from current block */
 
 void setup() {
-
   // set up Neil's hardware code
   Serial.begin (9600);
   for(i = 0; i < 3; i++) pinMode(irPin[i], INPUT);
@@ -105,9 +105,9 @@ void setup() {
   // end Neil's setup
 
   // setting list to all NULLS
-  reset_list(curr_previous, curr_previous_length);
-  reset_list(dest_previous, dest_previous_length);
-  reset_list(path, path_length);
+  reset_list(curr_previous, &curr_previous_length);
+  reset_list(dest_previous, &dest_previous_length);
+  reset_list(path, &path_length);
 
   // create blocks to fill in grid
   for (int row = 0; row < LENGTH; row++) {
@@ -140,6 +140,9 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  Serial.println("Starting Loop");
+  delay(1000);
+
   if (run_once) {
     run_once = false;
     run_floodfill();
@@ -147,21 +150,32 @@ void loop() {
 }
 
 int run_floodfill() {
+  Serial.println("Starting floodfill");
+  delay(1000);
+
   // push starting block onto stack
   stack.push(curr_block_ptr);
+
+  Serial.println("Pushed starting block onto stack: ");
+  delay(1000);
+  Serial.println(curr_block_ptr->coord.row);
+  delay(1000);
+  Serial.println(curr_block_ptr->coord.col);
+
   // while stack not empty, go to most optimal
   while (!stack.isEmpty()) {
     Block* best_block_ptr = stack.pop();
     if (best_block_ptr->visited) continue;
     // move robot to best_block;
     move_robot(curr_block_ptr, best_block_ptr);
+    delay(3000);
     curr_block_ptr = best_block_ptr;
     // wait for robot to move to best_block?
-    delay(3000);
     if (equals(best_block_ptr, dest_block_ptr)) {
       return 1;
     } else {
       visit(best_block_ptr);
+      delay(2000);
     }
   }
   return 0;
@@ -171,7 +185,7 @@ void visit(Block* b) {
   b->visited = true;
   int curr_row = b->coord.row;
   int curr_col = b->coord.col;
-  curr_distance = b->distance + 1;
+  curr_distance = b->distance;
 
   // for every neighbor, check if we have a shorter distance
   for (int row_offset = -1; row_offset <= 1; row_offset++) {
@@ -179,12 +193,12 @@ void visit(Block* b) {
 
       Coordinate new_coord = {curr_row + row_offset, curr_col + col_offset};
       // only check four directions, top, bot, left, right, make sure in bounds
-      if (row_offset ^ col_offset && is_inbounds(new_coord)) {
+      if ((ABS(row_offset) ^ ABS(col_offset)) && is_inbounds(new_coord)) {
 
         // get the neighbor from the grid, make sure it's reachable and hasn't been seen
         Block neighbor = grid[curr_row + row_offset][curr_col + col_offset];
         if (is_reachable(neighbor) && !neighbor.visited) {
-          neighbor.distance = distance;
+          neighbor.distance = curr_distance + 1;
           neighbor.prev = b;
           // add to queue
           stack.push(&neighbor);
