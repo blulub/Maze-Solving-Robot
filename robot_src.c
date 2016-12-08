@@ -161,7 +161,7 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-
+  run_Astar();
 }
 
 int run_Astar(Priority_Queue pq) {
