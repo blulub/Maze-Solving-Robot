@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <math.h>
 #include <StackList.h>
+#include <TimerOne.h>
+
 
 // Neil's hardware code
 #define leftPin A2
@@ -102,9 +104,13 @@ void setup() {
   pinMode(STEP_PIN_LEFT, OUTPUT);
   pinMode(DIR_PIN_RIGHT, OUTPUT);
   pinMode(STEP_PIN_RIGHT, OUTPUT);
+  Timer1.initialize(500000);
+  Timer1.attachInterrupt(readIRValue);
+
   // end Neil's setup
 
   // setting list to all NULLS
+  direction = BOTTOM;
   reset_list(curr_previous, &curr_previous_length);
   reset_list(dest_previous, &dest_previous_length);
   reset_list(path, &path_length);
@@ -145,7 +151,11 @@ void loop() {
 
   if (run_once) {
     run_once = false;
-    run_floodfill();
+    int result = run_floodfill();
+    Serial.println("finished with response of: ");
+    delay(1000);
+    Serial.println(result);
+    delay(1000);
   }
 }
 
@@ -197,6 +207,13 @@ void visit(Block* b) {
 
         // get the neighbor from the grid, make sure it's reachable and hasn't been seen
         Block neighbor = grid[curr_row + row_offset][curr_col + col_offset];
+        Serial.println("checking neighbor at: ");
+        delay(1000);
+        Serial.println(curr_row + row_offset);
+        delay(1000);
+        Serial.println(curr_col + col_offset);
+        delay(1000);
+        
         if (is_reachable(neighbor) && !neighbor.visited) {
           neighbor.distance = curr_distance + 1;
           neighbor.prev = b;
