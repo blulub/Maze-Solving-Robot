@@ -314,13 +314,19 @@ void move_robot(Block* curr_ptr, Block* dest_ptr) {
   delay(1000);
   Serial.println(curr_previous_length);
   delay(1000);
-  
+
   Block* cursor = curr_block_ptr;
   // fill previous list
   while (cursor != NULL) {
     list_add(curr_previous, cursor, &curr_previous_length);
     cursor = cursor->prev;
   }
+
+  Serial.println("finished adding to curr_previus");
+  delay(1000);
+  Serial.println(curr_previous_length);
+  delay(1000);
+  
 
   // find a path from curr_block to dest
   find_path(path, dest_ptr);
