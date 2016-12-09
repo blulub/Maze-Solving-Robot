@@ -213,8 +213,13 @@ void visit(Block* b) {
         delay(1000);
         Serial.println(curr_col + col_offset);
         delay(1000);
+        Serial.println("is neighbor open");
+        delay(1000);
+        bool reachable = is_reachable(neighbor);
+        Serial.println(reachable);
+        delay(1000);
 
-        if (is_reachable(neighbor) && !neighbor.visited) {
+        if (reachable && !neighbor.visited) {
           neighbor.distance = curr_distance + 1;
           neighbor.prev = b;
           // add to stack
@@ -515,14 +520,20 @@ void readIRValue() {
 }
 
 bool is_front_open() {
+  Serial.println("checking front open");
+  delay(1000);
   return distance[0] > 10;
 }
 
 bool is_left_open() {
+  Serial.println("checking left open");
+  delay(1000);
   return distance[1] > 10;
 }
 
 bool is_right_open() {  
+  Serial.println("checking right open");
+  delay(1000);
   return distance[2] > 10;
 }
 
