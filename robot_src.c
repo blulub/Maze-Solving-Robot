@@ -34,7 +34,7 @@ double distance[3] = {0};
 #define LENGTH 8
 #define WIDTH 8
 #define DEST_ROW 2
-#define DEST_COL 2
+#define DEST_COL 8
 
 struct Coordinate {
   int row;
@@ -200,7 +200,7 @@ void visit(Block* b) {
         if (is_reachable(neighbor) && !neighbor.visited) {
           neighbor.distance = curr_distance + 1;
           neighbor.prev = b;
-          // add to queue
+          // add to stack
           stack.push(&neighbor);
         }
       }
@@ -282,6 +282,20 @@ bool is_reachable(Block b) {
 }
 
 void move_robot(Block* curr_ptr, Block* dest_ptr) {
+  Serial.println("moving from current block:");
+  delay(1000);
+  Serial.println(curr_ptr->coord.row);
+  delay(1000);
+  Serial.println(curr_ptr->coord.col);
+  delay(1000);
+  Serial.println("moving to dest block:");
+  delay(1000);
+  Serial.println(dest_ptr->coord.row);
+  delay(1000);
+  Serial.println(dest_ptr->coord.col);
+  delay(1000);
+
+
   if (curr_ptr == dest_ptr) return;
   // use previous fields to find a path from curr to dest
   reset_list(curr_previous, &curr_previous_length);
@@ -471,6 +485,9 @@ bool is_right_open() {
 }
 
 void turn_left() {
+  Serial.println("turning left");
+  delay(1000);
+
   for (int i = 0; i < 180; i++) {
     rotateDeg(-1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
     rotateDeg(-1, 0.1, DIR_PIN_RIGHT, STEP_PIN_RIGHT);
@@ -480,6 +497,9 @@ void turn_left() {
 }
 
 void turn_right() {
+  Serial.println("turning right");
+  delay(1000);
+
   for (int i = 0; i < 180; i++) {
     rotateDeg(1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
     rotateDeg(1, 0.1, DIR_PIN_RIGHT, STEP_PIN_RIGHT);
@@ -490,6 +510,9 @@ void turn_right() {
 
 
 void move_forward_block() {
+  Serial.println("moving forward block");
+  delay(1000);
+
   for (int i = 0; i < 360; i++) {
     rotateDeg(-1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
     rotateDeg(1, 0.1, DIR_PIN_RIGHT, STEP_PIN_RIGHT);
@@ -498,6 +521,9 @@ void move_forward_block() {
 }
 
 void turn_around() {
+  Serial.println("turning around");
+  delay(1000);
+
   for (int i = 0; i < 360; i++) {
     rotateDeg(1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
     rotateDeg(1, 0.1, DIR_PIN_RIGHT, STEP_PIN_RIGHT);
