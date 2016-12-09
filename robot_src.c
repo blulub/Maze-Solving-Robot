@@ -203,7 +203,7 @@ void visit(Block* b) {
 
       Coordinate new_coord = {curr_row + row_offset, curr_col + col_offset};
       // only check four directions, top, bot, left, right, make sure in bounds
-      if ((ABS(row_offset) ^ ABS(col_offset)) && is_inbounds(new_coord)) {
+      if ((row_offset == 0 || col_offset == 0) && (row_offset != 0 && col_offset != 0) && is_inbounds(new_coord)) {
 
         // get the neighbor from the grid, make sure it's reachable and hasn't been seen
         Block neighbor = grid[curr_row + row_offset][curr_col + col_offset];
@@ -322,7 +322,7 @@ bool is_reachable(Block b) {
 }
 
 void move_robot(Block* curr_ptr, Block* dest_ptr) {
-  
+
   Serial.println("moving from current block:");
   delay(1000);
   Serial.println(curr_ptr->coord.row);
