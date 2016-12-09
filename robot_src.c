@@ -203,7 +203,7 @@ void visit(Block* b) {
 
       Coordinate new_coord = {curr_row + row_offset, curr_col + col_offset};
       // only check four directions, top, bot, left, right, make sure in bounds
-      if ((row_offset == 0 || col_offset == 0) && (row_offset != 0 && col_offset != 0) && is_inbounds(new_coord)) {
+      if ((row_offset == 0 || col_offset == 0) && (row_offset != 0 || col_offset != 0) && is_inbounds(new_coord)) {
 
         // get the neighbor from the grid, make sure it's reachable and hasn't been seen
         Block neighbor = grid[curr_row + row_offset][curr_col + col_offset];
@@ -255,6 +255,7 @@ bool is_reachable(Block b) {
   Serial.println(curr_block_ptr->coord.row);
   delay(1000);
   Serial.println(curr_block_ptr->coord.col);
+  delay(1000);
   Serial.println("checking if neighbor is open");
   delay(1000);
   Serial.println(b.coord.row);
