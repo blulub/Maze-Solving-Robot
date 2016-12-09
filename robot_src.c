@@ -53,7 +53,7 @@ typedef struct Block Block;
 
 Block* dest_block_ptr;
 Block* curr_block_ptr;
-int direction;
+int direction = BOTTOM;
 int curr_distance;
 bool run_once = true;
 Block grid[LENGTH][WIDTH];
