@@ -207,19 +207,8 @@ void visit(Block* b) {
 
         // get the neighbor from the grid, make sure it's reachable and hasn't been seen
         Block neighbor = grid[curr_row + row_offset][curr_col + col_offset];
-        Serial.println("checking neighbor at: ");
-        delay(1000);
-        Serial.println(curr_row + row_offset);
-        delay(1000);
-        Serial.println(curr_col + col_offset);
-        delay(1000);
-        Serial.println("is neighbor open");
-        delay(1000);
-        bool reachable = is_reachable(neighbor);
-        Serial.println(reachable);
-        delay(1000);
 
-        if (reachable && !neighbor.visited) {
+        if (is_reachable(neighbor) && !neighbor.visited) {
           neighbor.distance = curr_distance + 1;
           neighbor.prev = b;
           // add to stack
@@ -255,31 +244,7 @@ int find_in_list(Block* list[], Block* b, int* length) {
 
 // determines if a neighboring block is reachable
 bool is_reachable(Block b) {
-  Serial.println("current block at: ");
-  delay(1000);
-  Serial.println(curr_block_ptr->coord.row);
-  delay(1000);
-  Serial.println(curr_block_ptr->coord.col);
-  delay(1000);
-  Serial.println("checking if neighbor is open");
-  delay(1000);
-  Serial.println(b.coord.row);
-  delay(1000);
-  Serial.println(b.coord.col);
-  delay(1000);
-
-
   int dir_block_b = get_direction(&b);
-
-  Serial.println("direction of neighbor to current: ");
-  delay(1000);
-  Serial.println(dir_block_b);
-  delay(1000);
-
-  Serial.println("current direction facing: ");
-  delay(1000);
-  Serial.println(direction);
-  delay(1000);
   // see where the block is in respect to current block
   switch (dir_block_b) {
     case TOP:
@@ -328,20 +293,6 @@ bool is_reachable(Block b) {
 }
 
 void move_robot(Block* curr_ptr, Block* dest_ptr) {
-
-  Serial.println("moving from current block:");
-  delay(1000);
-  Serial.println(curr_ptr->coord.row);
-  delay(1000);
-  Serial.println(curr_ptr->coord.col);
-  delay(1000);
-  Serial.println("moving to dest block:");
-  delay(1000);
-  Serial.println(dest_ptr->coord.row);
-  delay(1000);
-  Serial.println(dest_ptr->coord.col);
-  delay(1000);
-
 
   if (curr_ptr == dest_ptr) return;
   // use previous fields to find a path from curr to dest
