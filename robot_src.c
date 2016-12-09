@@ -213,7 +213,7 @@ void visit(Block* b) {
         delay(1000);
         Serial.println(curr_col + col_offset);
         delay(1000);
-        
+
         if (is_reachable(neighbor) && !neighbor.visited) {
           neighbor.distance = curr_distance + 1;
           neighbor.prev = b;
@@ -250,7 +250,30 @@ int find_in_list(Block* list[], Block* b, int* length) {
 
 // determines if a neighboring block is reachable
 bool is_reachable(Block b) {
+  Serial.println("current block at: ");
+  delay(1000);
+  Serial.println(curr_block_ptr->coord.row);
+  delay(1000);
+  Serial.println(curr_block_ptr->coord.col);
+  Serial.println("checking if neighbor is open");
+  delay(1000);
+  Serial.println(b.coord.row);
+  delay(1000);
+  Serial.println(b.coord.col);
+  delay(1000);
+
+
   int dir_block_b = get_direction(&b);
+
+  Serial.println("direction of neighbor to current: ");
+  delay(1000);
+  Serial.println(dir_block_b);
+  delay(1000);
+
+  Serial.println("current direction facing: ");
+  delay(1000);
+  Serial.println(direction);
+  delay(1000);
   // see where the block is in respect to current block
   switch (dir_block_b) {
     case TOP:
@@ -299,6 +322,7 @@ bool is_reachable(Block b) {
 }
 
 void move_robot(Block* curr_ptr, Block* dest_ptr) {
+  
   Serial.println("moving from current block:");
   delay(1000);
   Serial.println(curr_ptr->coord.row);
