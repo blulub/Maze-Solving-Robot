@@ -293,10 +293,28 @@ bool is_reachable(Block b) {
 }
 
 void move_robot(Block* curr_ptr, Block* dest_ptr) {
+  Serial.println("moving robot from current");
+  delay(1000);
+  Serial.println(curr_ptr->coord.row);
+  delay(1000);
+  Serial.println(curr_ptr->coord.col);
+  delay(1000);
+  Serial.println("to dest");
+  delay(1000);
+  Serial.println(dest_ptr->coord.row);
+  delay(1000);
+  Serial.println(dest_ptr->coord.col);
+  delay(1000);
 
   if (curr_ptr == dest_ptr) return;
   // use previous fields to find a path from curr to dest
   reset_list(curr_previous, &curr_previous_length);
+
+  Serial.println("resetting curr_previousLength");
+  delay(1000);
+  Serial.println(curr_previous_length);
+  delay(1000);
+  
   Block* cursor = curr_block_ptr;
   // fill previous list
   while (cursor != NULL) {
