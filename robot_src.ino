@@ -5,7 +5,6 @@
 #include <StackList.h>
 #include <TimerOne.h>
 
-
 // Neil's hardware code
 #define leftPin A2
 #define rightPin A5
@@ -35,8 +34,6 @@ double distance[3] = {0};
 #define BOTTOM 3
 #define LENGTH 8
 #define WIDTH 8
-#define DEST_ROW 2
-#define DEST_COL 8
 
 struct Coordinate {
   int row;
@@ -47,7 +44,6 @@ struct Block {
   struct Coordinate coord;
   bool visited;
   struct Block* prev;
-  int distance;
 };
 
 typedef struct Coordinate Coordinate;
@@ -56,10 +52,12 @@ typedef struct Block Block;
 Block* dest_block_ptr;
 Block* curr_block_ptr;
 int direction = BOTTOM;
-int curr_distance;
 bool run_once = true;
 Block grid[LENGTH][WIDTH];
 StackList<Block*> stack;
+
+const int DEST_ROW = 1;
+const int DEST_COL = 7;
 
 Block* curr_previous[MAX_NUM_BLOCKS];
 int curr_previous_length = 0;
@@ -81,7 +79,7 @@ int change_direction(int dir, int neg);
 void reset_list(Block* list[], int* length);
 void list_add(Block* list[], Block* val, int* length);
 int find_in_list(Block* list[], Block* val, int* length);
-bool is_reachable(Block dest);
+bool is_reachable(Block* dest);
 
 /* Returns if the dest block is reachable given the current block */
 void rotateDeg(float deg, float speed, int dirPin, int stepPin);
@@ -118,84 +116,107 @@ void setup() {
   // create blocks to fill in grid
   for (int row = 0; row < LENGTH; row++) {
     for (int col = 0; col < WIDTH; col++) {
-      if (row == DEST_ROW && col == DEST_COL) {
-        grid[row][col].coord.row = DEST_ROW;
-        grid[row][col].coord.row = DEST_COL;
-        grid[row][col].visited = false;
-        grid[row][col].prev = NULL;
-        grid[row][col].distance = -1;
-      } else if (row == 0 && col == 0) {
-        grid[row][col].coord.row = 0;
-        grid[row][col].coord.col = 0;
-        grid[row][col].visited = false;
-        grid[row][col].prev = NULL;
-        grid[row][col].distance = 0;
-      } else {
-        grid[row][col].coord.row = row;
-        grid[row][col].coord.col = col;
-        grid[row][col].visited = false;
-        grid[row][col].prev = NULL;
-        grid[row][col].distance = -1;
-      }
+      grid[row][col].coord.row = row;
+      grid[row][col].coord.col = col;
+      grid[row][col].visited = false;
+      grid[row][col].prev = NULL;
     }
   }
 
   curr_block_ptr = &(grid[0][0]);
   dest_block_ptr = &(grid[DEST_ROW][DEST_COL]);
+  Serial.println("dest block ptr after setup");
+  delay(100);
+  Serial.println(dest_block_ptr->coord.row);
+  delay(100);
+  Serial.println(dest_block_ptr->coord.col);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   Serial.println("Starting Loop");
-  delay(1000);
+  delay(500);
 
   if (run_once) {
     run_once = false;
     int result = run_floodfill();
-    Serial.println("finished with response of: ");
-    delay(1000);
+    Serial.println("result of running floodfill");
+    delay(100);
     Serial.println(result);
-    delay(1000);
+    delay(100);
   }
+
+  Serial.println("stack size");
+  delay(500);
+  Serial.println(stack.count());
+  delay(500);
 }
 
 int run_floodfill() {
   Serial.println("Starting floodfill");
-  delay(1000);
+  delay(100);
 
   // push starting block onto stack
   stack.push(curr_block_ptr);
-
-  Serial.println("Pushed starting block onto stack: ");
-  delay(1000);
-  Serial.println(curr_block_ptr->coord.row);
-  delay(1000);
-  Serial.println(curr_block_ptr->coord.col);
-
   // while stack not empty, go to most optimal
   while (!stack.isEmpty()) {
+    Serial.println("count of items in stack before popping");
+    delay(100);
+    Serial.println(stack.count());
+    delay(100);
+
     Block* best_block_ptr = stack.pop();
     if (best_block_ptr->visited) continue;
     // move robot to best_block;
+
+    Serial.println("getting the best block");
+    delay(100);
+    Serial.println(best_block_ptr->coord.row);
+    delay(100);
+    Serial.println(best_block_ptr->coord.col);
+    delay(100);
+    Serial.println("at current block");
+    delay(100);
+    Serial.println(curr_block_ptr->coord.row);
+    delay(100);
+    Serial.println(curr_block_ptr->coord.col);
+    delay(100);
+    Serial.println("going to dest block");
+    delay(100);
+    Serial.println(dest_block_ptr->coord.row);
+    delay(100);
+    Serial.println(dest_block_ptr->coord.col);
+    delay(100);
+    
     move_robot(curr_block_ptr, best_block_ptr);
-    delay(3000);
-    curr_block_ptr = best_block_ptr;
+    delay(100);
     // wait for robot to move to best_block?
-    if (equals(best_block_ptr, dest_block_ptr)) {
+    if (curr_block_ptr->coord.row == dest_block_ptr->coord.row && curr_block_ptr->coord.col == dest_block_ptr->coord.col) {
       return 1;
     } else {
       visit(best_block_ptr);
-      delay(2000);
+      delay(100);
     }
+
+    Serial.println("count of items in stack after visiting");
+    delay(100);
+    Serial.println(stack.count());
+    delay(100);
   }
   return 0;
 }
 
 void visit(Block* b) {
+
+  Serial.println("visiting block");
+  delay(100);
+  Serial.println(b->coord.row);
+  delay(100);
+  Serial.println(b->coord.col);
+  delay(100);
   b->visited = true;
   int curr_row = b->coord.row;
   int curr_col = b->coord.col;
-  curr_distance = b->distance;
 
   // for every neighbor, check if we have a shorter distance
   for (int row_offset = -1; row_offset <= 1; row_offset++) {
@@ -204,15 +225,12 @@ void visit(Block* b) {
       Coordinate new_coord = {curr_row + row_offset, curr_col + col_offset};
       // only check four directions, top, bot, left, right, make sure in bounds
       if ((row_offset == 0 || col_offset == 0) && (row_offset != 0 || col_offset != 0) && is_inbounds(new_coord)) {
-
         // get the neighbor from the grid, make sure it's reachable and hasn't been seen
-        Block neighbor = grid[curr_row + row_offset][curr_col + col_offset];
-
-        if (is_reachable(neighbor) && !neighbor.visited) {
-          neighbor.distance = curr_distance + 1;
-          neighbor.prev = b;
+        Block* neighbor = &(grid[new_coord.row][new_coord.col]);
+        if (is_reachable(neighbor) && !neighbor->visited) {
+          neighbor->prev = b;
           // add to stack
-          stack.push(&neighbor);
+          stack.push(neighbor);
         }
       }
     }
@@ -243,8 +261,9 @@ int find_in_list(Block* list[], Block* b, int* length) {
 }
 
 // determines if a neighboring block is reachable
-bool is_reachable(Block b) {
-  int dir_block_b = get_direction(&b);
+bool is_reachable(Block* b) {
+  int dir_block_b = get_direction(b);
+
   // see where the block is in respect to current block
   switch (dir_block_b) {
     case TOP:
@@ -294,47 +313,45 @@ bool is_reachable(Block b) {
 
 void move_robot(Block* curr_ptr, Block* dest_ptr) {
   Serial.println("moving robot from current");
-  delay(1000);
+  delay(100);
   Serial.println(curr_ptr->coord.row);
-  delay(1000);
+  delay(100);
   Serial.println(curr_ptr->coord.col);
-  delay(1000);
+  delay(100);
   Serial.println("to dest");
-  delay(1000);
+  delay(100);
   Serial.println(dest_ptr->coord.row);
-  delay(1000);
+  delay(100);
   Serial.println(dest_ptr->coord.col);
-  delay(1000);
+  delay(100);
 
   if (curr_ptr == dest_ptr) return;
   // use previous fields to find a path from curr to dest
   reset_list(curr_previous, &curr_previous_length);
-
-  Serial.println("resetting curr_previousLength");
-  delay(1000);
-  Serial.println(curr_previous_length);
-  delay(1000);
-
   Block* cursor = curr_block_ptr;
   // fill previous list
+
   while (cursor != NULL) {
     list_add(curr_previous, cursor, &curr_previous_length);
     cursor = cursor->prev;
   }
 
-  Serial.println("finished adding to curr_previus");
-  delay(1000);
-  Serial.println(curr_previous_length);
-  delay(1000);
-  
-
   // find a path from curr_block to dest
   find_path(path, dest_ptr);
 
+  Serial.println("printing path to move to block");
+  delay(100);
+  for (int i = 0; i < path_length; i++) {
+    Serial.println(path[i]->coord.row);
+    delay(100);
+    Serial.println(path[i]->coord.col);
+    delay(100);
+    Serial.println();
+  }
+
   int next_block_idx = 0;
-  while (!equals(curr_block_ptr, dest_ptr)) {
+  while (curr_block_ptr != dest_ptr) {
     move_to_neighbor_block(path[next_block_idx]);
-    curr_block_ptr = path[next_block_idx];
     next_block_idx++;
   }
 }
@@ -348,7 +365,7 @@ void find_path(Block* path[], Block* dest) {
   Block* curr_dest = dest;
   while (curr_dest != NULL) {
     list_add(dest_previous, curr_dest, &dest_previous_length);
-    found_idx = find_in_list(curr_previous, curr_dest, &curr_previous_length);
+    found_idx = find_in_list(curr_previous, curr_dest, &curr_previous_length);    
     if (found_idx == -1) {
       curr_dest = curr_dest->prev;
     } else {
@@ -362,13 +379,30 @@ void find_path(Block* path[], Block* dest) {
   }
 
   // now add the ancestors of dest
-  for (int i = dest_previous_length - 1; i >= 0; i--) {
+  for (int i = dest_previous_length - 2; i >= 0; i--) {
     list_add(path, dest_previous[i], &path_length);
   }
 }
 
 void move_to_neighbor_block(Block* dest) {
-  int dir_to_dest = get_direction(dest);
+  Serial.println("moving to neighbor");
+  delay(100);
+  Serial.println(dest->coord.row);
+  delay(100);
+  Serial.println(dest->coord.col);
+  delay(100);
+  Serial.println("from current");
+  delay(100);
+  Serial.println(curr_block_ptr->coord.row);
+  delay(100);
+  Serial.println(curr_block_ptr->coord.col);
+  delay(100);
+
+  if (curr_block_ptr->coord.row == dest->coord.row && curr_block_ptr->coord.col == dest->coord.col) {
+    return;
+  }
+  
+  int dir_to_dest = get_direction(dest); // bottom
   switch (dir_to_dest) {
     case TOP:
       if (direction == TOP) {
@@ -383,7 +417,8 @@ void move_to_neighbor_block(Block* dest) {
         turn_left();
         move_forward_block();
       }
-    case BOTTOM:
+      break;
+    case BOTTOM:      
       if (direction == TOP) {
         turn_around();
         move_forward_block();
@@ -396,6 +431,7 @@ void move_to_neighbor_block(Block* dest) {
         turn_right();
         move_forward_block();
       }
+      break;
     case LEFT:
       if (direction == TOP) {
         turn_left();
@@ -409,6 +445,7 @@ void move_to_neighbor_block(Block* dest) {
         turn_around();
         move_forward_block();
       }
+      break;
     case RIGHT:
       if (direction == TOP) {
         turn_right();
@@ -422,7 +459,9 @@ void move_to_neighbor_block(Block* dest) {
       } else if (direction == RIGHT) {
         move_forward_block();
       }
+      break;
   }
+  curr_block_ptr = dest;
 }
 
 bool is_inbounds(Coordinate coord) {
@@ -496,37 +535,37 @@ void readIRValue() {
 
 bool is_front_open() {
   Serial.println("checking front open");
-  delay(1000);
+  delay(100);
   return distance[0] > 10;
 }
 
 bool is_left_open() {
   Serial.println("checking left open");
-  delay(1000);
+  delay(100);
   return distance[1] > 10;
 }
 
 bool is_right_open() {  
   Serial.println("checking right open");
-  delay(1000);
+  delay(100);
   return distance[2] > 10;
 }
 
 void turn_left() {
   Serial.println("turning left");
-  delay(1000);
+  delay(100);
 
   for (int i = 0; i < 180; i++) {
     rotateDeg(-1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
     rotateDeg(-1, 0.1, DIR_PIN_RIGHT, STEP_PIN_RIGHT);
   }
-  delay(3000);
+  delay(200);
   direction = change_direction(direction, -1);
 }
 
 void turn_right() {
   Serial.println("turning right");
-  delay(1000);
+  delay(500);
 
   for (int i = 0; i < 180; i++) {
     rotateDeg(1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
@@ -539,7 +578,7 @@ void turn_right() {
 
 void move_forward_block() {
   Serial.println("moving forward block");
-  delay(1000);
+  delay(500);
 
   for (int i = 0; i < 360; i++) {
     rotateDeg(-1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
@@ -550,7 +589,7 @@ void move_forward_block() {
 
 void turn_around() {
   Serial.println("turning around");
-  delay(1000);
+  delay(500);
 
   for (int i = 0; i < 360; i++) {
     rotateDeg(1, 0.1, DIR_PIN_LEFT, STEP_PIN_LEFT);
@@ -599,5 +638,3 @@ int change_direction(int dir, int num) {
     }
   }
 }
-
-
