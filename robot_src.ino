@@ -71,17 +71,16 @@ int run_floodfill();
 void visit(Block* b);
 bool equals(Block* b, Block* d);
 bool is_inbounds(Coordinate coord);
-int get_direction(Block* b); // gets the direction of block b with respect to current
-void find_path(Block* path[], Block* dest);
+int get_direction(Block* b); // gets the orientation of block b with respect to current
+void find_path(Block* path[], Block* dest); // fills path[] with blocks needed to go to
 void move_to_neighbor_block(Block* dest);
 int negate_direction(int dir);
 int change_direction(int dir, int neg);
-void reset_list(Block* list[], int* length);
+void reset_list(Block* list[], int* length); // clears lists
 void list_add(Block* list[], Block* val, int* length);
 int find_in_list(Block* list[], Block* val, int* length);
 bool is_reachable(Block* dest);
 
-/* Returns if the dest block is reachable given the current block */
 void rotateDeg(float deg, float speed, int dirPin, int stepPin);
 double get_IR (uint16_t value);
 void readIRValue();
@@ -92,7 +91,7 @@ void move_forward_block();
 void turn_around();
 void turn_left();
 void turn_right();
-void move_robot(Block* current, Block* dest); /* Moves robot to dest block from current block */
+void move_robot(Block* current, Block* dest); 
 
 void setup() {
   // set up Neil's hardware code
@@ -125,11 +124,6 @@ void setup() {
 
   curr_block_ptr = &(grid[0][0]);
   dest_block_ptr = &(grid[DEST_ROW][DEST_COL]);
-  Serial.println("dest block ptr after setup");
-  delay(100);
-  Serial.println(dest_block_ptr->coord.row);
-  delay(100);
-  Serial.println(dest_block_ptr->coord.col);
 }
 
 void loop() {
@@ -139,17 +133,8 @@ void loop() {
 
   if (run_once) {
     run_once = false;
-    int result = run_floodfill();
-    Serial.println("result of running floodfill");
-    delay(100);
-    Serial.println(result);
-    delay(100);
+    run_floodfill();
   }
-
-  Serial.println("stack size");
-  delay(500);
-  Serial.println(stack.count());
-  delay(500);
 }
 
 int run_floodfill() {
@@ -160,60 +145,24 @@ int run_floodfill() {
   stack.push(curr_block_ptr);
   // while stack not empty, go to most optimal
   while (!stack.isEmpty()) {
-    Serial.println("count of items in stack before popping");
-    delay(100);
-    Serial.println(stack.count());
-    delay(100);
 
     Block* best_block_ptr = stack.pop();
     if (best_block_ptr->visited) continue;
     // move robot to best_block;
-
-    Serial.println("getting the best block");
-    delay(100);
-    Serial.println(best_block_ptr->coord.row);
-    delay(100);
-    Serial.println(best_block_ptr->coord.col);
-    delay(100);
-    Serial.println("at current block");
-    delay(100);
-    Serial.println(curr_block_ptr->coord.row);
-    delay(100);
-    Serial.println(curr_block_ptr->coord.col);
-    delay(100);
-    Serial.println("going to dest block");
-    delay(100);
-    Serial.println(dest_block_ptr->coord.row);
-    delay(100);
-    Serial.println(dest_block_ptr->coord.col);
-    delay(100);
-    
     move_robot(curr_block_ptr, best_block_ptr);
     delay(100);
-    // wait for robot to move to best_block?
+
     if (curr_block_ptr->coord.row == dest_block_ptr->coord.row && curr_block_ptr->coord.col == dest_block_ptr->coord.col) {
       return 1;
     } else {
       visit(best_block_ptr);
       delay(100);
     }
-
-    Serial.println("count of items in stack after visiting");
-    delay(100);
-    Serial.println(stack.count());
-    delay(100);
   }
   return 0;
 }
 
 void visit(Block* b) {
-
-  Serial.println("visiting block");
-  delay(100);
-  Serial.println(b->coord.row);
-  delay(100);
-  Serial.println(b->coord.col);
-  delay(100);
   b->visited = true;
   int curr_row = b->coord.row;
   int curr_col = b->coord.col;
@@ -312,25 +261,12 @@ bool is_reachable(Block* b) {
 }
 
 void move_robot(Block* curr_ptr, Block* dest_ptr) {
-  Serial.println("moving robot from current");
-  delay(100);
-  Serial.println(curr_ptr->coord.row);
-  delay(100);
-  Serial.println(curr_ptr->coord.col);
-  delay(100);
-  Serial.println("to dest");
-  delay(100);
-  Serial.println(dest_ptr->coord.row);
-  delay(100);
-  Serial.println(dest_ptr->coord.col);
-  delay(100);
 
   if (curr_ptr == dest_ptr) return;
   // use previous fields to find a path from curr to dest
   reset_list(curr_previous, &curr_previous_length);
   Block* cursor = curr_block_ptr;
   // fill previous list
-
   while (cursor != NULL) {
     list_add(curr_previous, cursor, &curr_previous_length);
     cursor = cursor->prev;
@@ -338,16 +274,6 @@ void move_robot(Block* curr_ptr, Block* dest_ptr) {
 
   // find a path from curr_block to dest
   find_path(path, dest_ptr);
-
-  Serial.println("printing path to move to block");
-  delay(100);
-  for (int i = 0; i < path_length; i++) {
-    Serial.println(path[i]->coord.row);
-    delay(100);
-    Serial.println(path[i]->coord.col);
-    delay(100);
-    Serial.println();
-  }
 
   int next_block_idx = 0;
   while (curr_block_ptr != dest_ptr) {
@@ -385,19 +311,6 @@ void find_path(Block* path[], Block* dest) {
 }
 
 void move_to_neighbor_block(Block* dest) {
-  Serial.println("moving to neighbor");
-  delay(100);
-  Serial.println(dest->coord.row);
-  delay(100);
-  Serial.println(dest->coord.col);
-  delay(100);
-  Serial.println("from current");
-  delay(100);
-  Serial.println(curr_block_ptr->coord.row);
-  delay(100);
-  Serial.println(curr_block_ptr->coord.col);
-  delay(100);
-
   if (curr_block_ptr->coord.row == dest->coord.row && curr_block_ptr->coord.col == dest->coord.col) {
     return;
   }
