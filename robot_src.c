@@ -70,13 +70,20 @@ int path_length = 0;
 int run_floodfill();
 void visit(Block* b);
 bool equals(Block* b, Block* d);
+
+// moves robot from current block to dest block
+void move_robot(Block* current, Block* dest);
+// checks if a coordinate is in bounds within 8x8 grid
 bool is_inbounds(Coordinate coord);
-int get_direction(Block* b); // gets the orientation of block b with respect to current
-void find_path(Block* path[], Block* dest); // fills path[] with blocks needed to go to
+// gets the orientation of block b with respect to current
+int get_direction(Block* b); 
+// fills path[] with blocks along path from curr_Block to dest
+void find_path(Block* path[], Block* dest);
+// moves to neighbor block, either top, left, right, bottom
 void move_to_neighbor_block(Block* dest);
 int negate_direction(int dir);
 int change_direction(int dir, int neg);
-void reset_list(Block* list[], int* length); // clears lists
+void reset_list(Block* list[], int* length);
 void list_add(Block* list[], Block* val, int* length);
 int find_in_list(Block* list[], Block* val, int* length);
 bool is_reachable(Block* dest);
@@ -91,7 +98,7 @@ void move_forward_block();
 void turn_around();
 void turn_left();
 void turn_right();
-void move_robot(Block* current, Block* dest); 
+ 
 
 void setup() {
   // set up Neil's hardware code
